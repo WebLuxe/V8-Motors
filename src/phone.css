@@ -18,4 +18,17 @@
     .finale { min-height: 0; }
     .sellband { flex: none; align-items: flex-start; min-height: 100vh; min-height: 100svh; padding-block: calc(var(--nav-h) + 14svh) var(--s6); }
   }
+
+  /* a phone held sideways is only about 390px tall: the menu bar scrolls away with the page instead of staying, the bottom bar
+     keeps its icons but drops the words, and the compare tray sits lower and slimmer, so the cars get the screen */
+  @media (orientation: landscape) and (max-height: 500px) and (max-width: 999px) {
+    body:not(.page-home) .nav { position: absolute; }
+    .tab { min-height: 44px; }
+    .tab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .tray { bottom: calc(var(--tab-h) + 6px); }
+    .tray-inner { padding-block: 4px; }
+    /* the car photo fits between the menu bar and the price bar, whole, centred */
+    .car-page .gallery-main { align-self: center; width: auto; max-width: 100%; height: calc(100svh - var(--nav-h) - 84px); aspect-ratio: 4 / 3; margin-inline: auto; border-radius: 12px; }
+    .car-page .gallery-main img { position: absolute; inset: 0; height: 100%; }
+  }
 }

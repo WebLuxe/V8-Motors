@@ -8,7 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { store } from './store.js';
 import { initFx, photosArrive } from './fx.js';
-import { initGlass } from './glass.js';
+import { initGlass, engineReady } from './glass.js';
 import { initLens } from './lens.js';
 import { renderStatus } from './hours.js';
 
@@ -106,7 +106,7 @@ let resolveOpen;
 /** Resolves once the arrival curtain has opened (immediately if there wasn't one). */
 export const curtainOpen = new Promise((r) => (resolveOpen = r));
 
-function initCurtain() {
+function initCurtain(immersive) {
   const c = $('[data-curtain]');
   const label = $('[data-curtain-label]');
   if (!c) { resolveOpen(); return; }
@@ -117,11 +117,18 @@ function initCurtain() {
   if (viaCurtain) {
     label.textContent = stash(() => sessionStorage.getItem('v8:curtain')) || '';
     stash(() => sessionStorage.removeItem('v8:curtain'));
-    gsap.timeline({ onComplete: () => { html.classList.remove('curtain-in'); gsap.set([...L, ...R, mid], { clearProps: 'all' }); resolveOpen(); } })
-      .to(mid, { opacity: 0, y: -14, duration: 0.2, ease: 'power2.in' }, 0)
-      .to([...L].reverse(), { xPercent: -101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08)
-      .to([...R].reverse(), { xPercent: 101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08);
-    setTimeout(resolveOpen, 420); // let the page start its own entrance while the curtain is still opening
+    const open = () => {
+      // the page's entrances start with the opening, however long the curtain stayed shut
+      document.getAnimations().forEach((a) => { if (a.id === 'rise') { a.currentTime = 0; a.play(); } });
+      gsap.timeline({ onComplete: () => { html.classList.remove('curtain-in'); gsap.set([...L, ...R, mid], { clearProps: 'all' }); resolveOpen(); } })
+        .to(mid, { opacity: 0, y: -14, duration: 0.2, ease: 'power2.in' }, 0)
+        .to([...L].reverse(), { xPercent: -101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08)
+        .to([...R].reverse(), { xPercent: 101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08);
+      setTimeout(resolveOpen, 420);
+    };
+    // stay shut while the steel is built (at most 0.7 s), then open with the graphics card free, so the opening never stutters
+    if (immersive) open();
+    else Promise.race([engineReady, new Promise((r) => setTimeout(r, 700))]).then(() => requestAnimationFrame(open)); // let the page start its own entrance while the curtain is still opening
   } else {
     stash(() => sessionStorage.removeItem('v8:curtain'));
     resolveOpen();
@@ -157,6 +164,7 @@ function initCurtain() {
       : ROUTES[file] || 'V8 Motors';
     label.textContent = name;
     c.classList.add('is-active');
+    html.classList.add('leaving'); // the steel stops drawing under the closing curtain, so the curtain has the graphics card to itself
     gsap.timeline({ onComplete: () => { stash(() => sessionStorage.setItem('v8:curtain', name)); location.assign(url.href); } })
       .fromTo(L, { xPercent: -101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
       .fromTo(R, { xPercent: 101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
@@ -167,6 +175,7 @@ function initCurtain() {
     if (!e.persisted) return;
     leaving = false;
     c.classList.remove('is-active');
+    html.classList.remove('leaving');
     html.classList.remove('curtain-in');
     gsap.set([...L, ...R, mid], { clearProps: 'all' });
   });
@@ -454,7 +463,7 @@ function keepFiles() {
 export function initLayout({ home = false, immersive = false } = {}) {
   keepFiles();
   if ('scrollRestoration' in history) history.scrollRestoration = home ? 'manual' : 'auto';
-  initCurtain();
+  initCurtain(immersive);
   initMorph();
   initLens();
   photosArrive();

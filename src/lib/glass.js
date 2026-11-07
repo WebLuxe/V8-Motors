@@ -20,7 +20,7 @@ import { SHAPES } from './shapes.js';
 const PANELS = '.car, .finder, .inv-filters, .garage, .tool, .cmp-scroll, .compare .empty, .nav:not(.lens .nav)';
 const MAX = 24; // the most panels drawn at once, more than a window ever shows
 const TILE = 32; // the window is cut into squares this big (px), and each knows which panels touch it, so most of it asks about none
-const PIXELS = 3.7e6, SHARPEST = 1.5; // never more than this many pixels, and never finer than this on a sharp screen
+const PIXELS = 2.6e6, SHARPEST = 1.25; // never more than this many pixels, and never finer than this on a sharp screen
 const IDLE = 30; // ms between frames when only the steel is drifting, about 30 a second
 const RACERS = ['Coupe', 'Sedan']; // the low, long ones: the tall shapes looked silly flat out
 // each shape comes in these paints, and every car that crosses picks one of the eight at random: body top to bottom, then windows
@@ -231,14 +231,18 @@ function brushSheet() {
 }
 
 /* ------------------------------------------------------------------ the engine */
+let engineDone;
+/** Resolves once the steel has been built and drawn once, or straight away when it won't run. The arrival curtain waits for it,
+    because building it keeps the graphics card busy for a moment, and the curtain would stutter if it were opening then. */
+export const engineReady = new Promise((r) => (engineDone = r));
 export function initGlass() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (modest || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  if (modest || !matchMedia('(hover: hover) and (pointer: fine)').matches) { engineDone(); return; }
   const canvas = document.createElement('canvas');
   canvas.className = 'steel';
   canvas.setAttribute('aria-hidden', 'true');
   const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, failIfMajorPerformanceCaveat: true, powerPreference: 'high-performance' });
-  if (!gl) return;
+  if (!gl) { engineDone(); return; }
   document.body.prepend(canvas);
 
   let program = null, u = {}, tilesTex = null, parallel = null;
@@ -290,9 +294,11 @@ export function initGlass() {
     size();
     scan();
     html.classList.add('engine');
+    requestAnimationFrame(() => engineDone());
   };
   const giveUp = () => {
     ready = false;
+    engineDone();
     html.classList.remove('engine');
     gsap.ticker.remove(tick);
     watch.disconnect(); added.disconnect(); fits.disconnect();
@@ -527,8 +533,8 @@ export function initGlass() {
       return;
     }
     if (again) { again = false; scan(); }
-    // stopped altogether: a hidden tab, the film, or the 3D car filling the window
-    if (document.hidden || html.classList.contains('play-intro') || html.classList.contains('hero-cover')) { stopped = true; return; }
+    // stopped altogether: a hidden tab, the film, the 3D car filling the window, or the curtain closing over the page
+    if (document.hidden || html.classList.contains('play-intro') || html.classList.contains('hero-cover') || html.classList.contains('leaving')) { stopped = true; return; }
     if (stopped) { stopped = false; force = true; lastTick = performance.now(); from = tickAt = lastTick; frames = 0; }
     judge(performance.now());
     if (ready) frame(false);

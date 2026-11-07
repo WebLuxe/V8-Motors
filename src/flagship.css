@@ -29,7 +29,7 @@
 
 @layer components {
   /* ---------------------------------------------------------------- type */
-  [data-hero-title], .section-title, .page-title, .summary-title, .curtain-label { --wdth: 120; font-variation-settings: "wdth" var(--wdth); }
+  [data-hero-title], .section-title, .page-title, .summary-title, .curtain-label { --wdth: 120; font-stretch: calc(var(--wdth) * 1%); }
   .section-title { font-weight: 720; font-size: clamp(2.25rem, 5.6vw, 5rem); line-height: .98; letter-spacing: -.04em; max-width: 18ch; }
   .page-title { font-weight: 740; font-size: clamp(2.75rem, 8vw, 6.75rem); line-height: .94; letter-spacing: -.045em; max-width: 14ch; }
   :is(.hero-title, .section-title, .page-title, .car-h, .summary-title, .sheet-title, .deck-title) em { color: var(--em); letter-spacing: -.02em; }
@@ -97,7 +97,7 @@
   .car-tag { position: relative; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s3); margin: -1.5rem 0 0; padding: 0 var(--s3); }
   .car-tools { z-index: 3; }
   .car .save:not(.save--plain) { background: linear-gradient(180deg, #3a3b40, #18191b); box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 1px 0 #111, 0 2px 0 #0b0b0c, 0 8px 10px -2px rgb(0 0 0 / .8); }
-  .car-plate { position: relative; overflow: hidden; flex: none; padding: .46rem .85rem .4rem; border-radius: 7px; background: var(--ivory); color: #1d1d1c; font-weight: 790; font-size: clamp(1.125rem, 1.55vw, 1.375rem); line-height: 1.1; letter-spacing: -.005em; font-variation-settings: "wdth" 118;
+  .car-plate { position: relative; overflow: hidden; flex: none; padding: .46rem .85rem .4rem; border-radius: 7px; background: var(--ivory); color: #1d1d1c; font-weight: 790; font-size: clamp(1.125rem, 1.55vw, 1.375rem); line-height: 1.1; letter-spacing: -.005em; font-stretch: 118%;
     box-shadow: inset 0 0 0 2px var(--ivory), inset 0 0 0 3px rgb(12 12 14 / .5), 0 1px 0 #d3cec2, 0 2px 0 #b0ab9f, 0 3px 0 #8b877c, 0 4px 0 #625f57, 0 5px 0 #3b3935, 0 14px 16px -4px rgb(0 0 0 / .85); }
   .car-plate--deal { background: var(--red); color: #fff; box-shadow: inset 0 0 0 2px var(--red), inset 0 0 0 3px rgb(255 255 255 / .55), 0 14px 22px -12px rgb(0 0 0 / .85); }
   /* a passing headlight, when you point at the car */
@@ -106,7 +106,7 @@
     .car:hover .car-plate::after { opacity: 1; left: 120%; transition: left .7s var(--ease), opacity .1s; }
   }
   .car-monthly { margin-top: 1px; font-size: .9375rem; line-height: 1.3; color: var(--soft); }
-  .car-title { padding-inline: var(--s3); margin-top: var(--s4); font-weight: 720; font-size: clamp(1.3125rem, 1.9vw, 1.625rem); line-height: 1.12; letter-spacing: -.022em; font-variation-settings: "wdth" 114; }
+  .car-title { padding-inline: var(--s3); margin-top: var(--s4); font-weight: 720; font-size: clamp(1.3125rem, 1.9vw, 1.625rem); line-height: 1.12; letter-spacing: -.022em; font-stretch: 114%; }
   .car-kicker { padding-inline: var(--s3); margin-top: var(--s1); font-size: .9375rem; font-weight: 500; color: var(--soft); }
   .car-foot { padding-inline: var(--s3); margin-top: 0; padding-top: 0; border-top: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
   .car-line { font-size: .9375rem; color: var(--fog); }
@@ -131,10 +131,10 @@
     [data-grid]:not([data-view="list"]) .car .car-media { border-radius: 10px; }
     [data-grid]:not([data-view="list"]) .car-tag { margin-top: -1.25rem; padding: 0 var(--s2); }
     [data-grid]:not([data-view="list"]) :is(.car-title, .car-kicker, .car-foot) { padding-inline: var(--s2); }
-    [data-grid]:not([data-view="list"]) .car-plate { padding: .36rem .55rem .3rem; font-size: .9375rem; letter-spacing: -.01em; font-variation-settings: "wdth" 100; }
+    [data-grid]:not([data-view="list"]) .car-plate { padding: .36rem .55rem .3rem; font-size: .9375rem; letter-spacing: -.01em; font-stretch: 100%; }
     [data-grid]:not([data-view="list"]) .car-monthly { display: none; }
     [data-grid]:not([data-view="list"]) .car-photos { display: none; }
-    [data-grid]:not([data-view="list"]) .car-title { margin-top: var(--s3); font-size: 1.0625rem; font-variation-settings: "wdth" 100; }
+    [data-grid]:not([data-view="list"]) .car-title { margin-top: var(--s3); font-size: 1.0625rem; font-stretch: 100%; }
     [data-grid]:not([data-view="list"]) .car-kicker { font-size: .8125rem; }
     [data-grid]:not([data-view="list"]) .car-line { font-size: .8125rem; line-height: 1.3; }
     [data-grid]:not([data-view="list"]) .car-ticks { bottom: 1.7rem; left: var(--s2); right: var(--s2); }
@@ -154,7 +154,7 @@
 
   /* ---------------------------------------------------------------- the car page */
   .summary, .inv-filters { background: var(--surface); box-shadow: var(--slab), 0 36px 50px -24px rgb(0 0 0 / .85); border: 0; }
-  .summary-title { font-weight: 720; font-size: clamp(2.25rem, 3.8vw, 3.25rem); letter-spacing: -.035em; font-variation-settings: "wdth" 118; }
+  .summary-title { font-weight: 720; font-size: clamp(2.25rem, 3.8vw, 3.25rem); letter-spacing: -.035em; font-stretch: 118%; }
   .summary-kicker { color: var(--soft); font-size: 1rem; font-weight: 500; }
   .summary .summary-amount { display: inline-block; font-size: clamp(1.625rem, 2.6vw, 2.125rem); padding: .55rem 1rem .46rem; }
   .summary-price { padding: 0; border: 0; display: grid; gap: var(--s2); justify-items: start; }
@@ -179,7 +179,11 @@
     .car-page > .crumbs a:nth-of-type(2) { min-height: var(--tap); margin: 0; padding-inline: .7rem .9rem; gap: .3rem; border-radius: 12px; background: rgb(17 17 16 / .68); color: var(--ivory); font-weight: 620; }
     .car-page > .crumbs a:nth-of-type(2)::before { content: ""; width: .5rem; height: .5rem; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; rotate: 45deg; }
     .car-page { position: relative; }
-    .gallery-main { margin-inline: calc(var(--gutter) * -1); border-radius: 0; aspect-ratio: auto; height: min(62svh, 118vw); }
+    .gallery-main { margin-inline: calc(var(--gutter) * -1); border-radius: 0; aspect-ratio: 4 / 3; height: auto; } /* the whole car, as it was photographed */
+    /* the photo starts below the menu bar, so none of it hides behind the bar; the back chip sits on its top left and the badge on its top right */
+    .car-page { padding-top: var(--nav-h); }
+    .car-page > .crumbs { top: calc(var(--nav-h) + var(--s3)); }
+    .gallery-main .car-status { left: auto; right: var(--s3); top: var(--s3); }
     .gallery-main::after { border-radius: 0; box-shadow: none; }
     .gallery-main img { height: 100%; }
     .gal-arrow { display: none; }
@@ -191,7 +195,7 @@
   /* ---------------------------------------------------------------- the inventory, the garage */
   /* the gap before the footer is the footer's own, on every page: content never adds a second one */
   .inv-layout, .wizard-wrap, .compare, .car-page, .contact-grid, .prose { padding-bottom: 0; }
-  .inv-count strong { font-weight: 720; font-variation-settings: "wdth" 112; font-size: 2rem; }
+  .inv-count strong { font-weight: 720; font-stretch: 112%; font-size: 2rem; }
   .chip { background: rgb(255 255 255 / .09); }
   /* phones: the count and layout switch on one row, Filters and Sort on the next, big enough to hit */
   @media (max-width: 999px) {
@@ -202,8 +206,8 @@
   .inv-more-bar span { background: var(--ivory); }
   .pill input:checked + span, .body-opt input:checked + span { background: var(--ivory); color: var(--deep); border-color: var(--ivory); }
   .garage { margin-bottom: var(--s6); padding: clamp(1.25rem, 3vw, 2rem); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--surface-edge); display: grid; gap: var(--s4); }
-  .garage-title { font-weight: 720; font-size: clamp(1.625rem, 3vw, 2.25rem); letter-spacing: -.03em; font-variation-settings: "wdth" 116; }
-  .garage-title em { font-family: var(--serif); font-style: italic; font-weight: 500; color: var(--em); letter-spacing: -.01em; font-variation-settings: normal; }
+  .garage-title { font-weight: 720; font-size: clamp(1.625rem, 3vw, 2.25rem); letter-spacing: -.03em; font-stretch: 116%; }
+  .garage-title em { font-family: var(--serif); font-style: italic; font-weight: 500; color: var(--em); letter-spacing: -.01em; font-stretch: normal; }
   .garage-sub { margin-top: var(--s1); color: var(--soft); }
   .garage-acts { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); }
   @media (max-width: 559px) { .garage-acts .btn { flex: 1 1 100%; } }
@@ -271,7 +275,7 @@
   }
 
   @media (max-width: 999px) {
-    .car-page { padding-top: 0; }
+    .car-page { padding-top: var(--nav-h); } /* the photo starts below the menu bar */
     .gallery-main { box-shadow: none; aspect-ratio: auto; }
     .gallery-main img { scale: 1; animation: none; }
   }
@@ -353,7 +357,7 @@
 }
 /* very large screens: everything grows with the screen, so a 4K monitor doesn't get a tiny site in the middle.
    Measured against the height too, so a wide ultrawide doesn't grow past what its height can hold */
-html { font-size: max(100%, calc(min(100vw, 178vh) / 137)); }
+html { font-size: clamp(100%, calc(min(100vw, 178vh) / 120), 24px); } /* 16px up to a 1920 x 1080 window, then the page grows with it: 1440p shows the same page, sharper */
 
 /* =====================================================================
    The page is silver (src/lib/glass.js). Type lying directly on it is dark. Everything that stands on it, the hero, the bars, the
