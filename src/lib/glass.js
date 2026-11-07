@@ -11,7 +11,8 @@
  * src/glass.css gives them a plain readable panel on still steel. If the graphics card goes away it falls back to the same.
  */
 import gsap from 'gsap';
-import { modest, slowLevel, markSlow } from './device.js';
+import { modest, slowLevel, markSlow, forcedQuality } from './device.js';
+import { gpuTier } from './gpu.js';
 import { SHAPES } from './shapes.js';
 
 // The compare tray is not here, nor the note on the map: they float over photos and words, and this canvas is behind those
@@ -244,10 +245,14 @@ export function initGlass() {
   canvas.setAttribute('aria-hidden', 'true');
   const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, failIfMajorPerformanceCaveat: true, powerPreference: 'high-performance' });
   if (!gl) { engineDone(); return; }
+  // an older or phone-class graphics chip (src/lib/gpu.js) starts coarser, rather than stuttering first and being judged later.
+  // The glass is soft by nature, so it looks the same; a fast machine draws it exactly as before
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const tier = forcedQuality || gpuTier(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '', navigator.hardwareConcurrency, navigator.deviceMemory, /Macintosh/.test(navigator.userAgent));
   document.body.prepend(canvas);
 
   let program = null, u = {}, tilesTex = null, parallel = null;
-  let ready = false, stopped = false, quality = slowLevel ? COARSE : 1, force = true;
+  let ready = false, stopped = false, quality = slowLevel || tier === 'low' ? COARSE : 1, force = true;
   let W = 0, H = 0, gw = 0, gh = 0, tiles = new Uint8Array(0);
 
   /* ---- start, and start again if the graphics card comes back */

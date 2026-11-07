@@ -78,6 +78,10 @@ The dealer's photo server takes about two seconds per photo, so the gallery neve
 
 ### Mobile performance
 
+- **Graphics tiers** (`src/lib/gpu.js`): the page's first script reads the name of the graphics chip and sorts it before anything downloads. *High* (a graphics card, Apple silicon) gets the 3D car exactly as designed. *Mid* (Intel Iris/UHD, AMD's built-in Radeon) gets the same scene with fewer pixels, a one-pass headlamp glow and half-rate frames while nothing moves. *Low* (older Intel HD/UHD 6xx, phone chips, machines short of cores or memory) plays the filmed car, rendered from the same scene, and never downloads the 3D model.
+- **Stepping down while running** (`src/lib/rover3d.js`): if the live car can't keep up it gives up sharpness, then the glow, then the reflection, then hands over to the film, and the machine starts from there for three days. When it hands over, the graphics memory goes back at once.
+- **See what others see:** add `?quality=low`, `?quality=mid` or `?quality=high` to the address on any device (kept for the visit; `?quality=auto` goes back to normal). Nothing about a forced tier is remembered.
+- Budget phones (four cores or fewer, or 3 GB of memory or less; iPhones excepted, they under-report) start in light mode from the first paint instead of after two seconds of stutter.
 - Smooth (Lenis) scrolling only runs with a mouse or trackpad; phones use their own touch scrolling.
 - Every looping animation moves only by transform and opacity, so none of them repaints the page; nothing animates off screen (the rotating word, countdown and background pause when they can't be seen).
 - Text pages don't download the stock list: the dealer's details live in their own small module (`src/dealer.js`).

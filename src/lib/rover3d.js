@@ -563,25 +563,46 @@ function findLamp(car) {
  * @param onSign      a tap on the wall sign
  * @param onTooSlow   this device can't run it even at the lowest setting
  * @param withEngine  also load the V8 for the intro
+ * @param tier        'high', 'mid' or 'low': how much this machine's graphics chip can be asked for (src/lib/gpu.js)
+ * @param forced      the tier was asked for by hand (?quality=): draw even on a software chip, and remember nothing
  */
 const BONNET_OPEN = 1.43; // radians. Nearly upright, so it stands clear behind the engine and frames it
 
-export async function createStage({ canvas, s, input, onProgress = () => {}, onTap = () => {}, onSign = () => {}, onTooSlow = () => {}, withEngine = false }) {
+/* How much each tier draws. high is the scene exactly as designed. mid is integrated laptop graphics: the same hall, lights, paint
+   and reflections, with fewer pixels (the biggest cost by far), a single blur for the headlamp glow, a little less dust and smoke,
+   and half-rate frames while nothing on screen is moving. low only happens when a machine is stepped down while running (see
+   STEPS below) or is short of cores or memory: no glow pass, no reflected car, and 30 frames a second.
+     dpr     the pixel ratio asked for (a hard ceiling on top of `pixels`)
+     pixels  the most pixels drawn per frame, whatever the screen, so a 4K monitor costs what a 1080p one does
+     glow    blur passes for the headlamp glow (pairs): 2 soft, 1 a little tighter, 0 none
+     idle    ms between frames while nothing moves (0: every frame)
+     cap     ms between frames always (0: every frame) */
+const QUALITY = {
+  high: { pixels: 4.2e6, glow: 2, mirror: true, dust: 110, puffs: 22, aniso: 8, idle: 0, cap: 0 },
+  mid: { pixels: 2.4e6, glow: 1, mirror: true, dust: 70, puffs: 16, aniso: 4, idle: 30, cap: 0 },
+  low: { pixels: 1.3e6, glow: 0, mirror: false, dust: 0, puffs: 0, aniso: 2, idle: 30, cap: 30 },
+};
+const STEP_KEY = 'v8:3d-steps', STEP_FOR = 3 * 24 * 3600 * 1000; // how far this machine was stepped down, remembered for three days
+
+export async function createStage({ canvas, s, input, onProgress = () => {}, onTap = () => {}, onSign = () => {}, onTooSlow = () => {}, withEngine = false, tier = 'high', forced = false }) {
   const phone = matchMedia('(pointer: coarse)').matches;
   const CAP = import.meta.env.MODE === 'dbg' ? window.__capture : null; // only for rendering the phone film: see scripts/film.mjs
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: !!CAP?.clear, powerPreference: 'high-performance', stencil: false });
   // drawn by the processor rather than a graphics chip (remote desktop, a blocked driver): don't even try
   const info = renderer.getContext().getExtension('WEBGL_debug_renderer_info');
   const chip = info ? renderer.getContext().getParameter(info.UNMASKED_RENDERER_WEBGL) : '';
-  if (import.meta.env.MODE !== 'dbg' && /swiftshader|llvmpipe|software|basic render/i.test(chip)) { renderer.dispose(); throw new Error('no graphics chip'); }
+  if (import.meta.env.MODE !== 'dbg' && !forced && /swiftshader|llvmpipe|softpipe|software|basic render/i.test(chip)) { renderer.dispose(); throw new Error('no graphics chip'); }
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
   renderer.setClearColor(0x000000, CAP?.clear ? 0 : 1);
-  // how sharp: a little extra on an ordinary screen, but never past a fixed number of pixels, so a 4K monitor costs the
-  // graphics card the same as a 1080p one instead of four times as much
-  const MAX_PIXELS = CAP ? 60e6 : 4.2e6;
-  let dpr = CAP ? CAP.dpr : modest ? 1 : phone ? Math.min(devicePixelRatio || 1, 2) : Math.min(Math.max(devicePixelRatio || 1, 1.5), 2);
+  const level = CAP ? 'high' : forced ? tier : modest ? 'low' : QUALITY[tier] ? tier : 'high';
+  const Q = QUALITY[level];
+  // how sharp: on high, a little extra on an ordinary screen (1.5x), up to 2x on a sharp one; on mid, never past 1.25x, which on
+  // a laptop's small sharp screen is still crisp; on low, the screen's own pixels. Never past Q.pixels in all, either
+  const MAX_PIXELS = CAP ? 60e6 : Q.pixels;
+  const ratio = devicePixelRatio || 1;
+  let dpr = CAP ? CAP.dpr : level === 'low' ? 1 : level === 'mid' ? Math.min(ratio, 1.25) : phone ? Math.min(ratio, 2) : Math.min(Math.max(ratio, 1.5), 2);
   renderer.setPixelRatio(dpr);
 
   // ---- downloads
@@ -610,7 +631,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
     hallLoad,
     load('models/floor.webp', (t) => {
       t.wrapS = t.wrapT = RepeatWrapping;
-      t.anisotropy = 8;
+      t.anisotropy = Q.aniso;
     }),
     withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/engine.glb'), ok, undefined, () => ok(null)); }) : null,
     withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/bay.glb'), ok, undefined, () => ok(null)); }) : null,
@@ -651,7 +672,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   scene.add(rig);
 
   // the reflection: same meshes, same materials, upside down
-  const mirror = modest ? null : car.clone(true);
+  const mirror = Q.mirror ? car.clone(true) : null;
   if (mirror) {
     mirror.scale.y = -1;
     mirror.traverse((o) => { if (o.isMesh) o.renderOrder = -1; });
@@ -698,7 +719,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   bayLight.scale.set(3.4, 2.2, 1);
 
   // dust hanging in the air, only visible where the light catches it
-  const DUST = modest ? 0 : 110;
+  const DUST = Q.dust;
   const dustPos = new Float32Array(DUST * 3);
   for (let i = 0; i < DUST; i++) {
     dustPos[i * 3] = (Math.random() - 0.5) * 7;
@@ -712,17 +733,18 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   rig.add(dust);
 
   // tyre smoke off the rear wheels as it launches
-  const puffs = Array.from({ length: modest ? 0 : 22 }, (_, i) => {
+  const PUFFS = Q.puffs;
+  const puffs = Array.from({ length: PUFFS }, (_, i) => {
     const m = new SpriteMaterial({ map: glow, color: 0xb7c7d4, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
     const sp = new Sprite(m);
     sp.renderOrder = 3;
     scene.add(sp);
-    return { sp, side: i % 2 ? 1 : -1, seed: Math.random(), at: i / 22, life: i / 22, x: 0, z: 0, burning: false };
+    return { sp, side: i % 2 ? 1 : -1, seed: Math.random(), at: i / PUFFS, life: i / PUFFS, x: 0, z: 0, burning: false };
   });
 
   // ---- the glow: only the lights, on their own, with the car in black so it hides them where it should. Blurred small
   // and added over the finished picture, so it can't disturb the edges underneath
-  const glowOn = !modest && !CAP?.clear;
+  let glowPasses = CAP?.clear ? 0 : Q.glow; // 0 when this tier goes without, or a machine is stepped down past it
   const black = new MeshBasicMaterial({ color: 0x000000 });
   const lit = new Set([...lamps.drl, ...lamps.pod, ...lamps.red]);
   const solid = [];
@@ -755,10 +777,15 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
       }`,
   });
   const quad = new FullScreenQuad(blur);
+  let glowSize = '';
+  const dropGlow = () => { [glowA, glowB, glowC].forEach((r) => r?.dispose()); glowA = glowB = glowC = null; glowSize = ''; };
   const sizeGlow = () => {
-    if (!glowOn) return;
-    [glowA, glowB, glowC].forEach((r) => r?.dispose());
+    if (!glowPasses) return;
     const w = Math.max(2, W >> 2), h = Math.max(2, H >> 2);
+    // a window being dragged wider asks dozens of times a second: the glow's pictures are only remade when their size really changes
+    if (glowSize === `${w}x${h}` && glowA) return;
+    dropGlow();
+    glowSize = `${w}x${h}`;
     glowA = new WebGLRenderTarget(w, h, rtOpts);
     glowB = new WebGLRenderTarget(w >> 1, h >> 1, { type: HalfFloatType, depthBuffer: false });
     glowC = new WebGLRenderTarget(w >> 1, h >> 1, { type: HalfFloatType, depthBuffer: false });
@@ -798,11 +825,17 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
     renderer.clear();
     renderer.render(scene, camera);
     glowLook(false);
-    // blur it small, twice, and add it on top
-    blurPass(glowA, glowB, 1, 0);
-    blurPass(glowB, glowC, 0, 1);
-    blurPass(glowC, glowB, 2, 0);
-    blurPass(glowB, glowC, 0, 2);
+    // blur it small, twice, and add it on top. A lighter tier blurs once, a little wider, which is half the passes for nearly
+    // the same soft glow
+    if (glowPasses > 1) {
+      blurPass(glowA, glowB, 1, 0);
+      blurPass(glowB, glowC, 0, 1);
+      blurPass(glowC, glowB, 2, 0);
+      blurPass(glowB, glowC, 0, 2);
+    } else {
+      blurPass(glowA, glowB, 1.8, 0);
+      blurPass(glowB, glowC, 0, 1.8);
+    }
     renderer.setRenderTarget(null);
     renderer.autoClear = false;
     add.uniforms.uT.value = glowC.texture;
@@ -839,8 +872,36 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
     base.sy = (seen / 2 + base.sy * seen - H / 2) / H;
   };
   let ready = false;
-  new ResizeObserver(() => { resize(); if (ready) draw(true); }).observe(canvas.parentElement);
+  const life = new AbortController(), { signal } = life; // every listener below goes when this is aborted (dispose)
+  const sizes = new ResizeObserver(() => { resize(); if (ready) draw(true); });
+  sizes.observe(canvas.parentElement);
   resize();
+
+  /* ---- stepping down. A machine that can't keep up gives up what costs the most for the least you'd notice, one step at a time:
+     sharpness down to the screen's own pixels first (a stutter as mild as 40 frames a second is reason enough for that), then the
+     headlamp glow, which draws the whole scene a second time, then the car's reflection, which draws the car twice, and last of
+     all pixels coarser than the screen. How far it went is remembered for three days, so the next visit starts there instead of
+     stuttering through the same steps again. If even the bottom step crawls, the filmed car takes over (giveUp, below). */
+  const lowest = phone ? 1 : 0.7;
+  const sharpness = () => renderer.getPixelRatio(); // what is really drawn, after the pixel limit
+  const STEPS = [
+    () => sharpness() > 1.01 && ((dpr = Math.max(1, sharpness() * 0.8)), sharpen(), true),
+    () => glowPasses > 0 && ((glowPasses = 0), dropGlow(), true),
+    () => !!mirror?.visible && ((mirror.visible = false), true),
+    () => sharpness() > lowest + 0.01 && ((dpr = lowest), sharpen(), true),
+  ];
+  const remember = !forced && !CAP;
+  let stepped = 0;
+  const stepDown = (save = true) => {
+    if (!STEPS.some((step) => step())) return false;
+    stepped++;
+    if (save && remember) try { localStorage.setItem(STEP_KEY, JSON.stringify({ n: stepped, at: Date.now() })); } catch { /* storage switched off */ }
+    return true;
+  };
+  try {
+    const was = remember && JSON.parse(localStorage.getItem(STEP_KEY));
+    for (let n = was && Date.now() - was.at < STEP_FOR ? was.n : 0; n > 0 && stepDown(false); n--);
+  } catch { /* storage switched off */ }
 
   // ---- is the pointer on the wall sign? The wall is flat, so the ray only has to reach it, and the car in front wins
   let hoverSign = false;
@@ -858,12 +919,12 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   if (input) {
     const ignore = (t) => t.closest?.('a, button, input, select, label, .gate');
     let x0 = 0, xs = 0, moved = 0, id = null, last = 0;
-    input.addEventListener('dragstart', (e) => e.preventDefault());
+    input.addEventListener('dragstart', (e) => e.preventDefault(), { signal });
     input.addEventListener('pointerdown', (e) => {
       if (ignore(e.target) || e.button || scrollY > 40 || document.documentElement.classList.contains('play-intro')) return;
       if (e.pointerType === 'mouse') e.preventDefault(); // no text selection, so nothing for the browser to start dragging
       dragging = true; id = e.pointerId; x0 = xs = e.clientX; moved = 0; spinV = 0; last = performance.now();
-    });
+    }, { signal });
     addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') {
         lookXTo = (e.clientX / innerWidth - 0.5) * 2; lookYTo = (e.clientY / innerHeight - 0.5) * 2; steerTo = -lookXTo * 0.5;
@@ -880,60 +941,89 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
       spinV = a / Math.max(4, now - last) * 16;
       last = now;
       if (Math.abs(e.clientX - xs) > 8) turned = true;
-    }, { passive: true });
+    }, { passive: true, signal });
     const end = (e) => {
       if (!dragging || e.pointerId !== id) return;
       dragging = false;
       if (moved < 8 && e.type === 'pointerup') { if (overSign(e.clientX, e.clientY)) onSign(); else onTap(); }
     };
-    addEventListener('pointerup', end);
-    addEventListener('pointercancel', end);
+    addEventListener('pointerup', end, { signal });
+    addEventListener('pointercancel', end, { signal });
   }
 
   // ---- only draw while it can be seen
   let onScreen = true;
-  new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }, { threshold: 0.01 }).observe(canvas.parentElement);
+  const seenBy = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }, { threshold: 0.01 });
+  seenBy.observe(canvas.parentElement);
 
   let hoverGlow = 0, nextCatch = 6, catchAt = -9, clock = 0;
   const t0 = performance.now();
   const forward = new Vector3(), toCam = new Vector3(), lampPos = new Vector3();
-  let contextLost = false, tooSlow = false, lastT = t0, spanAt = 0, spanFrames = 0, spanBroken = false, lowSpans = 0, lastDraw = 0, lastDist = s.carZ + s.road, wheelV = 0, wheelA = 0, burnA = 0;
+  let contextLost = false, tooSlow = false, disposed = false, lostTimer = 0, lastT = t0, lastDraw = 0, lastDist = s.carZ + s.road, wheelV = 0, wheelA = 0, burnA = 0;
+
+  /* ---- can this machine keep up? Every tick of the page's clock counts, drawn or not, so a lighter tier resting at half rate
+     (below) is never mistaken for a slow one. Judged on two seconds at a time and only twice running, so a stall while something
+     loads is never mistaken for a slow machine. A gap over 1.5 seconds is a hidden tab. A battery saver holds a healthy machine
+     at 30 frames a second, which is why only below 27 counts as truly slow */
+  let lastTick = t0, spanAt = 0, spanFrames = 0, spanBroken = false, lowSpans = 0, softSpans = 0;
+  const judge = (now) => {
+    const gap = now - lastTick;
+    lastTick = now;
+    if (!spanAt) { spanAt = now; spanFrames = 0; spanBroken = false; }
+    spanFrames++;
+    if (gap > 1500) spanBroken = true;
+    if (now - spanAt <= 2000) return;
+    const fps = (spanFrames * 1000) / (now - spanAt), broken = spanBroken;
+    spanAt = now; spanFrames = 0; spanBroken = false;
+    if (broken) { lowSpans = softSpans = 0; return; }
+    lowSpans = fps < 27 ? lowSpans + 1 : 0;
+    softSpans = fps < 40 ? softSpans + 1 : 0;
+    if (lowSpans >= 2 && fps < 10) { // crawling: every step at once, and if there is nothing left to give, the filmed car
+      lowSpans = softSpans = 0;
+      let gave = false;
+      while (stepDown()) gave = true;
+      if (!gave) giveUp();
+    } else if (lowSpans >= 2) { lowSpans = softSpans = 0; stepDown(); }
+    // a mild stutter only costs sharpness, and only for this visit: a laptop in a power-saving mode runs at 30 and is fine tomorrow
+    else if (softSpans >= 2) { softSpans = 0; if (sharpness() > 1.01) stepDown(false); }
+  };
+  /** Even the lowest setting crawls: hand over to the filmed car so the site stays usable, and give the graphics memory back
+      once the picture has faded away (.hero-canvas in src/site.css), for the film to use. */
+  const giveUp = () => {
+    tooSlow = true;
+    canvas.classList.remove('is-live');
+    onTooSlow();
+    setTimeout(dispose, 900);
+  };
+
+  /* ---- is anything moving? The page's numbers (a trick, the intro, scrolling), a drag, the car still coasting round, the
+     pointer's lean or the sign's hover glow still settling, wheels still turning, a letter of the sign catching, smoke in the air.
+     When nothing is, a lighter tier draws every other frame: the dust and the sign drift so slowly that nobody can tell, and
+     the graphics chip gets to rest. The high tier always draws every frame */
+  const before = {};
+  let lastScroll = scrollY;
+  const still = () => {
+    let same = !dragging && !spinV && (scrollY <= 6 || Math.abs(spin) < 1e-3) && scrollY === lastScroll
+      && Math.abs(steerTo - steer) < 1e-3 && Math.abs(lookXTo - lookX) < 1e-3 && Math.abs(lookYTo - lookY) < 1e-3
+      && Math.abs((hoverSign ? 1 : 0) - hoverGlow) < 0.01 && Math.abs(wheelV) < 0.01 && clock - catchAt > 0.45 && !puffs.some((p) => p.burning);
+    lastScroll = scrollY;
+    for (const k in s) if (s[k] !== before[k]) { before[k] = s[k]; same = false; }
+    return same;
+  };
 
   function draw(force) {
     const now = performance.now();
     if (CAP && !CAP.go) return;
-    if (contextLost || tooSlow || (!force && (!onScreen || document.hidden || s.off))) { lastT = now; return; }
-    if (!force && modest && now - lastDraw < 30) return; // 30 fps on modest phones
+    // not drawing (out of sight, a hidden tab, the film on top): the clock waits, and so does the judging of speed
+    if (disposed || contextLost || tooSlow || (!force && (!onScreen || document.hidden || s.off))) { lastT = lastTick = now; spanAt = 0; return; }
+    if (!force && !CAP) judge(now);
+    if (tooSlow) return;
+    if (!force && Q.cap && now - lastDraw < Q.cap) return; // the lowest tier: 30 frames a second at most
+    if (!force && Q.idle && now - lastDraw < Q.idle && still()) return; // a lighter tier, while nothing moves
     lastDraw = now;
     const dt = CAP ? CAP.dt : Math.min(0.05, (now - lastT) / 1000);
     clock += dt; // only runs while frames are drawn, so nothing leaps forward after a hidden tab
     const t = clock;
-
-    // if this device can't keep up, trade sharpness for smoothness, and if even the lowest setting crawls, hand over to
-    // the photo of the car so the site stays usable. Judged on two seconds at a time and only twice running, so a stall
-    // while something loads is never mistaken for a slow machine. A gap over 1.5 seconds is a hidden tab
-    const gap = now - lastT;
-    if (!spanAt) spanAt = now;
-    spanFrames++;
-    if (gap > 1500) spanBroken = true;
-    if (now - spanAt > 2000 && !CAP) {
-      const fps = (spanFrames * 1000) / (now - spanAt), broken = spanBroken;
-      spanAt = now; spanFrames = 0; spanBroken = false;
-      lowSpans = !broken && fps < 24 ? lowSpans + 1 : 0;
-      if (lowSpans >= 2) {
-        lowSpans = 0;
-        const floor = phone ? 1 : 0.7;
-        if (renderer.getPixelRatio() > floor + 0.01) {
-          dpr = fps < 10 ? floor : Math.max(floor, renderer.getPixelRatio() * 0.8);
-          sharpen();
-        } else if (fps < 10) {
-          tooSlow = true;
-          canvas.classList.remove('is-live');
-          onTooSlow();
-          return;
-        }
-      }
-    }
     lastT = now;
 
     const f = s.frame;
@@ -1090,7 +1180,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
 
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    if (glowOn) drawGlow();
+    if (glowPasses) drawGlow();
   }
 
   if (import.meta.env.MODE === 'dbg') window.__dbg = { THREE: { Color, MeshBasicMaterial, DoubleSide }, scene, car, rig, s, renderer, camera, draw, hide: [sky, floor.mesh, hallLights.mesh, hallLights.mirror, signs.group, dust, ...beamMeshes, ...heads.flatMap((h) => [h.glow, h.streak]), ...tails, ...(mirror ? [mirror] : [])] };
@@ -1098,7 +1188,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   // rather than all at once on the page's own thread: that froze the start button for most of a second
   if (engine) { engine.group.visible = true; engine.group.scale.setScalar(1e-4); }
   await compileAside(renderer, scene, camera);
-  if (glowOn) { // and the glow pass's own: the scene in black, and the blur
+  if (glowPasses) { // and the glow pass's own: the scene in black, and the blur
     glowLook(true);
     if (glowA) renderer.setRenderTarget(glowA); // paints are built for where they are drawn: the glow goes to its own picture
     await compileAside(renderer, scene, camera);
@@ -1115,7 +1205,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   if (engine) {
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
-    if (glowOn) drawGlow(); // the glow pass draws it too, with shaders of its own
+    if (glowPasses) drawGlow(); // the glow pass draws it too, with shaders of its own
     engine.group.scale.setScalar(ENGINE_SIZE);
     engine.group.visible = false;
   }
@@ -1124,24 +1214,63 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   canvas.classList.add('is-live');
   // a browser may drop the graphics of a background tab. Everything comes back by itself except what was drawn into a
   // texture, so the reflections are rebuilt. The stage waits dark for that; the still only steps in if it never comes back
-  let lostTimer = 0;
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     canvas.classList.remove('is-live');
     contextLost = true;
     lostTimer = setTimeout(() => document.documentElement.classList.remove('has-3d'), 4000);
-  });
+  }, { signal });
   canvas.addEventListener('webglcontextrestored', async () => {
     clearTimeout(lostTimer);
     const old = scene.environment;
     scene.environment = await buildStudio(renderer, hallTex);
     contextLost = false;
     old?.dispose();
+    dropGlow(); // their pictures went with the context: made again
     sizeGlow();
     draw(true);
     document.documentElement.classList.add('has-3d');
     canvas.classList.add('is-live');
-  });
+  }, { signal });
+
+  /** Hands back everything this stage holds on the graphics card: every shape, paint and picture in the scene (the engine and
+      bay too, if they're still here), the reflections, the glow's pictures and passes, and then the context itself, at once,
+      rather than whenever the browser gets round to it. Then every listener and watcher goes, and draw() does nothing. */
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    life.abort();
+    sizes.disconnect();
+    seenBy.disconnect();
+    clearTimeout(lostTimer);
+    engine?.dispose(); engine = null;
+    bay?.dispose(); bay = null;
+    const shapes = new Set(), paints = new Set(), pictures = new Set();
+    const picture = (v) => { if (v?.isTexture) pictures.add(v); };
+    scene.traverse((o) => {
+      if (o.geometry) shapes.add(o.geometry);
+      for (const m of [o.material].flat()) {
+        if (!m) continue;
+        paints.add(m);
+        Object.values(m).forEach(picture);
+        if (m.uniforms) Object.values(m.uniforms).forEach((u) => picture(u?.value));
+      }
+    });
+    for (const m of [black, blur, add]) paints.add(m);
+    for (const t of [scene.environment, hallTex, surfaceTex, glow, streak]) picture(t);
+    shapes.forEach((g) => g.dispose());
+    paints.forEach((m) => m.dispose());
+    pictures.forEach((t) => t.dispose());
+    dropGlow();
+    quad.dispose();
+    scene.environment = null;
+    renderer.renderLists.dispose();
+    renderer.dispose();
+    renderer.forceContextLoss();
+  }
+  // leaving for good (not into the back/forward cache, which keeps the page as it is): give the graphics card back straight away,
+  // so the next page's own canvas has it
+  addEventListener('pagehide', (e) => { if (!e.persisted) dispose(); }, { signal });
 
   return {
     draw,
@@ -1154,6 +1283,9 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
     },
     dropEngine() { engine?.dispose(); engine = null; },
     dropBay() { bay?.dispose(); bay = null; if (plainBay) plainBay.visible = true; },
+    dispose,
+    /** which tier it is drawing at, and how many steps down it has gone (for checking, see ?quality= in src/lib/device.js) */
+    get quality() { return { level, stepped, pixelRatio: sharpness(), glow: glowPasses, mirror: !!mirror?.visible }; },
     get turned() { return turned; },
   };
 }

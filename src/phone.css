@@ -48,7 +48,8 @@
 
 /* ---------------------------------------------------------------- light mode
    A device that has shown it can't keep up (a weak or busy computer, a browser drawing without its graphics chip, an old phone:
-   see src/lib/device.js and watchSpeed in src/lib/layout.js) gets the same pages, same layout and colours, with the costly
+   see src/lib/device.js and watchSpeed in src/lib/layout.js), and a budget phone (four cores or fewer, or 3 GB of memory or less: the
+   first script in headHTML, src/lib/templates.js) from its very first paint, gets the same pages, same layout and colours, with the costly
    effects taken off: no blur behind glass, no big soft shadows, no rims drawn with masks. Panels carry a little more white and a
    hairline edge instead, so they still read as panels. Outside the layers on purpose, so it wins over everything above. */
 html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; }

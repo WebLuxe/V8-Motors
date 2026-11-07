@@ -12,15 +12,27 @@
     try {
       // the live 3D car is for a computer with a mouse or trackpad that hasn't struggled with the effects before (src/lib/device.js);
       // phones, tablets and struggling computers play the filmed car instead, so they don't download any of it
-      var fine = matchMedia('(hover: hover) and (pointer: fine)').matches, slow = false;
+      var fine = matchMedia('(hover: hover) and (pointer: fine)').matches, slow = false, forced = null;
       try { var sv = JSON.parse(localStorage.getItem('v8:slow')); slow = !!(sv && Date.now() - sv.at < 2592e5 && sv.level >= 1); } catch (e) {}
-      var live = fine && !slow && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData);
-      // and only on a real graphics chip: without one, the computer plays the films instead (the same test as in src/pages/home.js)
+      // ?quality=low|mid|high: see the site as that kind of machine does, for this visit (?quality=auto forgets it). See src/lib/device.js
+      try {
+        var qm = /[?&]quality=(low|mid|high|auto)\b/.exec(location.search);
+        if (qm && qm[1] === 'auto') sessionStorage.removeItem('v8:quality'); else if (qm) sessionStorage.setItem('v8:quality', qm[1]);
+        forced = sessionStorage.getItem('v8:quality');
+      } catch (e) {}
+      var live = !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData) && (forced ? forced !== 'low' : fine && !slow);
+      // and only on a graphics chip that can draw it smoothly (src/lib/gpu.js, pasted in below by vite.config.js). Without one, or with an
+      // older or phone-class chip, the computer plays the films instead, which were rendered from the very same scene
+      /*@gpuTier*/
+      var chip = '', tier = 'none';
       if (live) try {
         var gc = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true }), gi = gc && gc.getExtension('WEBGL_debug_renderer_info');
-        live = !!gc && !/swiftshader|llvmpipe|software|basic render/i.test(gi ? String(gc.getParameter(gi.UNMASKED_RENDERER_WEBGL)) : '');
+        chip = gi ? String(gc.getParameter(gi.UNMASKED_RENDERER_WEBGL)) : '';
+        tier = !gc ? 'none' : forced || gpuTier(chip, navigator.hardwareConcurrency, navigator.deviceMemory, /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent));
         if (gc && gc.getExtension('WEBGL_lose_context')) gc.getExtension('WEBGL_lose_context').loseContext();
-      } catch (e) { live = false; }
+      } catch (e) { tier = 'none'; }
+      live = live && (tier === 'high' || tier === 'mid');
+      window.__v8gpu = { chip: chip, tier: tier, forced: forced, live: live }; // src/pages/home.js and src/lib/rover3d.js go by this, rather than asking again
       // where the 3D car will run, the page keeps its stage dark until the car is ready. The still is framed differently,
       // so showing it first would look like the car jumping when the live one takes over
       if (live) document.documentElement.classList.add('has-3d');

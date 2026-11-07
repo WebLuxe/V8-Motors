@@ -5,6 +5,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { headHTML, navHTML, footerHTML, mobileBarHTML, promisesHTML, hoursHTML, reachHTML, inventoryGridHTML, filterOptionsHTML, shapeSvg } from './src/lib/templates.js';
 import { META } from './src/lib/meta.js';
 import { CARS } from './src/data.js';
+import { gpuTier } from './src/lib/gpu.js';
 
 const root = import.meta.dirname;
 const pages = readdirSync(root).filter((f) => f.endsWith('.html'));
@@ -24,6 +25,7 @@ function prerender() {
         const P = rel.includes('/') ? '../' : '';
         const meta = META[rel];
         return html
+          .replace('/*@gpuTier*/', () => `var gpuTier = ${gpuTier.toString()};`) // one judge of graphics chips, for this script and the modules
           .replace('<!--@head-->', () => (meta ? headHTML({ ...meta, jsonld: meta.jsonld(), P }) : ''))
           .replace(/<!--@nav:(\w+)-->/, (_, k) => navHTML(k, P))
           .replace(/<!--@tabbar:(\w+)-->/, (_, k) => mobileBarHTML(k, P))

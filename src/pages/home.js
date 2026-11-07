@@ -5,7 +5,7 @@ import { wireCardActions } from '../lib/card.js';
 import { arrive } from '../lib/fx.js';
 import { saturdayDeals } from '../lib/hours.js';
 import { DARK, HERO } from '../lib/rover-shots.js';
-import { slowLevel, markSlow } from '../lib/device.js';
+import { markSlow, gpuInfo } from '../lib/device.js';
 
 const ENGINE = new URL('media/intro/engine.mp3', document.baseURI).href;
 const NAVS = ['[data-nav]', '.tabbar'];
@@ -27,17 +27,10 @@ const FILM = innerHeight > innerWidth ? FILMS.tall : FILMS.wide;
 /* The same devices don't draw the car live afterwards either: they play a short filmed loop of it (scripts/hero-loop.mjs), about
    1 MB, which every device plays smoothly and which costs far less to download than the 3D car. */
 const LOOP = (k, hevc) => `media/hero/loop-${k}${hevc ? '-hevc' : ''}.mp4`;
-const touchOnly = !matchMedia('(hover: hover) and (pointer: fine)').matches;
-/** Can this computer draw the 3D car on a real graphics chip? Asked once, the way src/lib/rover3d.js would find out later. */
-const realGpu = (() => {
-  try {
-    const c = document.createElement('canvas'), gl = c.getContext('webgl2', { failIfMajorPerformanceCaveat: true });
-    if (!gl) return false;
-    const info = gl.getExtension('WEBGL_debug_renderer_info'), chip = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return !/swiftshader|llvmpipe|software|basic render/i.test(chip);
-  } catch { return false; }
-})();
+/** This computer's graphics chip and its tier (src/lib/gpu.js), as the page's first script found them (index.html). It already
+    weighed everything the live car needs: a mouse or trackpad, a real graphics chip that can draw it smoothly, and no struggles
+    remembered (src/lib/device.js). */
+const gpu = gpuInfo();
 
 const media = $('[data-hero-media]');
 const canvas = $('[data-hero-canvas]');
@@ -65,8 +58,8 @@ const s = { ...(playIntro ? DARK : HERO) };
 if (import.meta.env.MODE === 'dbg') { window.__s = s; window.__gsap = gsap; }
 const capture = import.meta.env.MODE === 'dbg' && !!window.__capture; // rendering the films themselves: always the live car
 const moving3d = !reduced && !navigator.connection?.saveData; // reduced motion and data saver keep the still photo
-// the live 3D car: a computer with a mouse or trackpad, a real graphics chip, and no struggles remembered (src/lib/device.js)
-const live3d = moving3d && (capture || (!touchOnly && realGpu && slowLevel < 1));
+// the live 3D car: a computer whose graphics chip can draw it smoothly (above). Everything else plays the films of it
+const live3d = moving3d && (capture || gpu.live);
 const useFilm = playIntro && moving3d && !live3d;
 const useLoop = moving3d && !live3d;
 const wantStage = live3d;
@@ -76,7 +69,7 @@ let filmFetched = () => {};
 const filmFirst = useFilm ? new Promise((done) => { filmFetched = done; setTimeout(done, 20000); }) : null;
 const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirst).then(() => import('../lib/rover3d.js'))
   .then(({ createStage }) => createStage({
-    canvas, s, input: $('.hero'),
+    canvas, s, input: $('.hero'), tier: gpu.tier, forced: !!gpu.forced,
     onProgress: (v) => { modelDone = v * 0.9; onModel(modelDone); }, // the last tenth is getting it ready to draw
     withEngine: playIntro && !useFilm,
     onTap: () => flashLights(0),
