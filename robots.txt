@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://webluxe.github.io/V8-Motors/sitemap.xml
