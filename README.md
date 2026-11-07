@@ -68,16 +68,9 @@ The dealer's photo server takes about two seconds per photo, so the gallery neve
 - **Saturday deals:** a live countdown (Mauritius time), sharing the last screen with the footer.
 - **Mouse lock:** one flick of the wheel moves exactly one screen, and so do the arrow keys, Page Up and Page Down. Touch screens scroll as usual.
 
-### Home page
-
-- **Hero:** "Drive *smarter.*", where the accent word rolls over every few seconds like an odometer drum, one plain sentence, one primary action, and a readout of real numbers (cars in stock, the lowest price, open or closed right now).
-- **The drive:** the hero stays on screen for a long stretch of scrolling, one unbroken shot with your thumb on the throttle. With a mouse or trackpad it runs in stops: one flick of the wheel plays the next part and the page holds until it lands. The car pulls off, the camera slides round to its side, it runs flat out along the hall with the wheels turning at the right speed for the road, the camera comes round the bonnet to dead ahead, and the camera keeps easing in while the showroom dissolves into the page and "Just in" fades up through it, with no cut and no flash. Short landscape screens and reduced motion skip it.
-- **Just in:** the newest cars on a rail you swipe.
-- **Shapes:** body-type tiles whose little cars drive in, wheels turning, as they scroll into view.
-- **Saturday deals:** a live countdown (Mauritius time), sharing the last screen with the footer.
-
 ### Mobile performance
 
+- **The phone intro** is a film rendered from the 3D scene (720x1560 upright, 1600x900 wide, level 4.0, about 2 MB, so every phone decodes it in hardware). After the tap, the start button stays and shows how much has arrived until the film can play right through, so a slow connection waits at the button instead of freezing mid-film. A phone that can't play the smaller HEVC file falls back to H.264 and carries on. The intro only gives up after ten seconds without any progress, and then the page comes up with the filmed car.
 - **Graphics tiers** (`src/lib/gpu.js`): the page's first script reads the name of the graphics chip and sorts it before anything downloads. *High* (a graphics card, Apple silicon) gets the 3D car exactly as designed. *Mid* (Intel Iris/UHD, AMD's built-in Radeon) gets the same scene with fewer pixels, a one-pass headlamp glow and half-rate frames while nothing moves. *Low* (older Intel HD/UHD 6xx, phone chips, machines short of cores or memory) plays the filmed car, rendered from the same scene, and never downloads the 3D model.
 - **Stepping down while running** (`src/lib/rover3d.js`): if the live car can't keep up it gives up sharpness, then the glow, then the reflection, then hands over to the film, and the machine starts from there for three days. When it hands over, the graphics memory goes back at once.
 - **See what others see:** add `?quality=low`, `?quality=mid` or `?quality=high` to the address on any device (kept for the visit; `?quality=auto` goes back to normal). Nothing about a forced tier is remembered.
@@ -105,6 +98,13 @@ The dealer's photo server takes about two seconds per photo, so the gallery neve
 ### Forms
 
 The sell form validates on the page, then opens WhatsApp to V8 Motors with the message already written. The visitor presses send in their own app. Nothing is stored on a server.
+
+## Branches
+
+- `main`: the source. Work happens here.
+- `gh-pages`: the published site, written by `npm run deploy` (never edited by hand). GitHub Pages serves it.
+
+The car photos aren't in `main` (they're made by the stock sync), so deploy from a machine that can reach the stock API, or one that still has `public/images/cars/` from an earlier sync: without them the catalogue would go out with no photos.
 
 ## Folders
 

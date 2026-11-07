@@ -5,7 +5,7 @@
 
 /* Self-hosted fonts, no third-party requests:
    - Archivo (variable width + weight, Latin, 90 KB) for everything;
-   - Bodoni Moda italic (17 KB) for the one accent word in a headline, e.g. "Drive <em>smarter.</em>"
+   - Bodoni Moda italic (17 KB) for the one accent word in a headline, e.g. "Sell <em>your car</em>"
    Each has a metric-matched fallback, so text doesn't reflow when the real font arrives. */
 @font-face {
   font-family: "Archivo";
@@ -104,7 +104,7 @@
   :is(.hero-title, .section-title, .page-title, .summary-title, .sheet-title) em {
     font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 1.07em; line-height: 0; letter-spacing: -.012em;
     font-stretch: normal; color: var(--accent-2); padding-right: .06em; }
-  /* a small chapter label above a section title: "02 · Just in" */
+  /* a small label above a section title: "Saturday deals" */
   .eyebrow { display: inline-flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); font-size: .8125rem; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
   .eyebrow::before { content: ""; width: 1.75rem; height: 1px; background: currentColor; opacity: .7; }
   .eyebrow b { font-weight: 650; font-variant-numeric: tabular-nums; color: var(--bone); letter-spacing: .06em; }
@@ -852,7 +852,6 @@
   .nav-ink { position: absolute; left: 0; bottom: 7px; height: 2px; width: 0; border-radius: 2px; background: var(--accent); opacity: 0; pointer-events: none;
     box-shadow: 0 0 12px rgb(209 205 201 / .6); view-transition-name: nav-ink; }
   .nav-ink.is-ready { transition: transform .5s var(--ease), width .5s var(--ease), opacity .3s; }
-  /* the chapter you're reading (home page): "02 · Just in" */
   /* on phones the chapter label takes the wordmark's place, next to the logo, once you're past the opening */
   .wordmark span { transition: opacity .35s, translate .45s var(--ease); }
 
@@ -937,9 +936,8 @@
   .countdown.is-on .countdown-label::before { content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .5rem; border-radius: 50%; background: #fff; vertical-align: .05em; animation: pulse-dot 1.6s ease-in-out infinite; }
   @keyframes pulse-dot { 50% { opacity: .35; } }
 
-  /* the body-type tiles: the car drives in, its wheels turn */
+  /* a little car's wheels turning */
   @keyframes wheel-spin { to { rotate: 360deg; } }
-  @keyframes drive-in { from { translate: -140% 0; } }
 }
 
 /* ---------------------------------------------------------------- photos arriving: a soft sweep, then a fade in */
