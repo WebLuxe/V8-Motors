@@ -29,10 +29,25 @@
     .car-page .gallery-main img { position: absolute; inset: 0; height: 100%; }
   }
 
+  /* ---- a narrow phone (most Androids are 360px wide): a list card's photo is too small for "Just arrived" and the heart side by
+     side, so the tag says it shorter. The full words stay in the page for screen readers */
+  @media (max-width: 379px) {
+    .grid-cars[data-view="list"] :is(.car-status--new, .car-status--deal) { font-size: 0; }
+    .grid-cars[data-view="list"] .car-status--new::before { content: 'New'; font-size: .6875rem; }
+    .grid-cars[data-view="list"] .car-status--deal::before { content: 'Deal'; font-size: .6875rem; }
+  }
+
+  /* ---- a car page's bottom bar: the price stays on one line, and on the narrowest phones the bar tightens to keep it there */
+  .buybar-price { white-space: nowrap; }
+  @media (max-width: 359px) {
+    .buybar { gap: var(--s2); }
+    .buybar-price { font-size: .9375rem; font-stretch: 100%; }
+    .buybar .btn:not(.buybar-icon) { padding-inline: var(--s3); }
+  }
+
   /* ---- the menu on phones: three lines at the top right of the menu bar, and the menu drops down from the top */
   .nav-burger { display: none; }
   @media (max-width: 899px) {
-    .tabbar { display: none !important; }
     .nav-burger { display: grid; align-content: center; justify-items: end; gap: 5px; margin-left: auto; width: var(--tap); height: var(--tap); margin-right: -.5rem; padding-right: .5rem; color: inherit; border-radius: 12px; }
     .nav-burger span { display: block; width: 22px; height: 2px; border-radius: 2px; background: currentColor; transition: width .3s var(--ease); }
     .nav-burger span:nth-child(3) { width: 14px; }
@@ -53,7 +68,7 @@
    effects taken off: no blur behind glass, no big soft shadows, no rims drawn with masks. Panels carry a little more white and a
    hairline edge instead, so they still read as panels. Outside the layers on purpose, so it wins over everything above. */
 html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; }
-html.lite :is(.car, .finder, .inv-filters, .calc, .wizard, .estimate, .finance-intro, .fin-mini-box, .panel, .garage, .form-done, .tray-inner, .contact-side, .spec, .tool, .acc) {
+html.lite :is(.car, .finder, .inv-filters, .calc, .wizard, .estimate, .finance-intro, .fin-mini-box, .panel, .garage, .tray-inner, .contact-side, .spec, .tool, .acc) {
   background-color: rgb(255 255 255 / .86) !important; outline: 1px solid rgb(18 20 24 / .1); outline-offset: -1px; }
 html.lite :is(.car, .finder, .calc, .wizard, .estimate, .finance-intro, .fin-mini-box, .garage, .contact-side, .spec, .tool, .acc)::before,
 html.lite .inv-filters::after { display: none !important; }

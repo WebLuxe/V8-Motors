@@ -21,7 +21,6 @@
   --shadow-lg: 0 30px 60px -30px rgb(8 8 8 / .9);
   --edge: max(var(--gutter), calc((100vw - 84rem) / 2));
 }
-@media (max-width: 899px) { :root { --tab-h: calc(76px + env(safe-area-inset-bottom)); } }
 
 @layer base {
   body { color: var(--ivory); }
@@ -32,7 +31,7 @@
   [data-hero-title], .section-title, .page-title, .summary-title, .curtain-label { --wdth: 120; font-stretch: calc(var(--wdth) * 1%); }
   .section-title { font-weight: 720; font-size: clamp(2.25rem, 5.6vw, 5rem); line-height: .98; letter-spacing: -.04em; max-width: 18ch; }
   .page-title { font-weight: 740; font-size: clamp(2.75rem, 8vw, 6.75rem); line-height: .94; letter-spacing: -.045em; max-width: 14ch; }
-  :is(.hero-title, .section-title, .page-title, .car-h, .summary-title, .sheet-title, .deck-title) em { color: var(--em); letter-spacing: -.02em; }
+  :is(.hero-title, .section-title, .page-title, .summary-title, .sheet-title) em { color: var(--em); letter-spacing: -.02em; }
   .eyebrow { white-space: nowrap; margin-bottom: var(--s5); font-size: .75rem; letter-spacing: .16em; color: var(--fog); }
   .eyebrow b { color: var(--accent); }
   .section { padding-block: var(--sec); }
@@ -54,12 +53,6 @@
   .nav.is-scrolled, body:not(.page-home) .nav { background: #141517; box-shadow: none; }
   .nav-links a { font-size: .9375rem; }
   /* a floating dock: it sits off the screen's edges, under the thumb */
-  .tabbar { left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); height: 60px; padding: 0 var(--s1); border-radius: 18px; border: 0;
-    background: rgb(21 21 20 / .96); box-shadow: inset 0 0 0 1px var(--hair), 0 18px 34px -14px rgb(0 0 0 / .85); }
-  .tab { font-size: .75rem; font-weight: 620; gap: 2px; min-height: 60px; }
-  .tab svg { width: 1.3rem; height: 1.3rem; stroke-width: 1.6; }
-  .tab .mark { width: 1.55rem; }
-  .tab-pill { top: 5px; height: 50px; width: 4.1rem; border-radius: 14px; background: rgb(255 255 255 / .09); box-shadow: inset 0 0 0 1px var(--hair); }
   .sheet { background: linear-gradient(180deg, #363534, #282726 45%, #1f1f1e); }
   .sheet-title em { color: var(--em); }
 
@@ -105,7 +98,6 @@
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .car:hover .car-plate::after { opacity: 1; left: 120%; transition: left .7s var(--ease), opacity .1s; }
   }
-  .car-monthly { margin-top: 1px; font-size: .9375rem; line-height: 1.3; color: var(--soft); }
   .car-title { padding-inline: var(--s3); margin-top: var(--s4); font-weight: 720; font-size: clamp(1.3125rem, 1.9vw, 1.625rem); line-height: 1.12; letter-spacing: -.022em; font-stretch: 114%; }
   .car-kicker { padding-inline: var(--s3); margin-top: var(--s1); font-size: .9375rem; font-weight: 500; color: var(--soft); }
   .car-foot { padding-inline: var(--s3); margin-top: 0; padding-top: 0; border-top: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
@@ -132,7 +124,6 @@
     [data-grid]:not([data-view="list"]) .car-tag { margin-top: -1.25rem; padding: 0 var(--s2); }
     [data-grid]:not([data-view="list"]) :is(.car-title, .car-kicker, .car-foot) { padding-inline: var(--s2); }
     [data-grid]:not([data-view="list"]) .car-plate { padding: .36rem .55rem .3rem; font-size: .9375rem; letter-spacing: -.01em; font-stretch: 100%; }
-    [data-grid]:not([data-view="list"]) .car-monthly { display: none; }
     [data-grid]:not([data-view="list"]) .car-photos { display: none; }
     [data-grid]:not([data-view="list"]) .car-title { margin-top: var(--s3); font-size: 1.0625rem; font-stretch: 100%; }
     [data-grid]:not([data-view="list"]) .car-kicker { font-size: .8125rem; }
@@ -150,7 +141,7 @@
   .grid-cars[data-view="list"] .car-info { display: flex; flex-direction: column; }
   .grid-cars[data-view="list"] .car-ticks { bottom: var(--s2); }
   .grid-cars[data-view="list"] .car-tools { top: var(--s2); right: auto; left: calc(34% - 3.25rem); }
-  @media (max-width: 640px) { .grid-cars[data-view="list"] .car { grid-template-columns: 42% minmax(0, 1fr); } .grid-cars[data-view="list"] .car-tools { display: none; } .grid-cars[data-view="list"] .car-monthly { display: none; } }
+  @media (max-width: 640px) { .grid-cars[data-view="list"] .car { grid-template-columns: 42% minmax(0, 1fr); } .grid-cars[data-view="list"] .car-tools { display: none; } }
 
   /* ---------------------------------------------------------------- the car page */
   .summary, .inv-filters { background: var(--surface); box-shadow: var(--slab), 0 36px 50px -24px rgb(0 0 0 / .85); border: 0; }
@@ -261,7 +252,6 @@
   .car-page .summary-title { font-size: clamp(2.5rem, 4.4vw, 4rem); line-height: .92; text-shadow: 0 3px 22px rgb(0 0 0 / .65); }
   .car-page .summary-title em { font-weight: 400; }
   .car-page .summary-kicker { text-shadow: 0 1px 10px rgb(0 0 0 / .8); }
-  .car-page .summary-monthly { text-shadow: 0 1px 10px rgb(0 0 0 / .8); color: var(--soft); }
 
   .car-page .summary .specs { display: flex; flex-wrap: wrap; gap: var(--s1); }
   .car-page .summary .spec { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .65rem; min-height: 2rem; border-radius: 8px; background: rgb(14 15 16 / .72); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 1px 0 #2a2b2e, 0 2px 0 #141517; }
@@ -379,7 +369,7 @@ html { font-size: clamp(100%, calc(min(100vw, 178vh) / 120), 24px); } /* 16px up
   /* things that were see-through on the dark page, or white on it */
   .btn-line { border-color: var(--btn-edge); }
   .chip { background: rgb(255 255 255 / .38); }
-  .car-page .summary-title, .car-page .summary-kicker, .car-page .summary-monthly { text-shadow: none; }
+  .car-page .summary-title, .car-page .summary-kicker { text-shadow: none; }
 }
 
 /* the viewer and video player are dark, so their round buttons are too (white icons on the pale panel colour were invisible) */

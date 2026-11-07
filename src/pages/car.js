@@ -47,8 +47,6 @@ function setupGallery() {
     img.srcset = '';
     img.src = p.done ? big(at) : small(at);
     if (!p.done) p.wait.then(() => { if (mine === ask) img.src = big(at); });
-    const mirror = $('[data-gal-reflect]');
-    if (mirror) mirror.src = small(at);
     if (!reduced) img.animate([{ opacity: 0.55, transform: `translateX(${dir * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.16, 1, .3, 1)' });
     fetchPhoto((at + 1) % n);
     fetchPhoto((at - 1 + n) % n);

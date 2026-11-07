@@ -101,7 +101,7 @@
   [data-hero-title], .section-title, .page-title, .summary-title { --wdth: 112; font-stretch: calc(var(--wdth) * 1%); }
   .section-title { font-weight: 760; font-size: clamp(2rem, 4.4vw, 3.6rem); line-height: 1; letter-spacing: -.03em; max-width: 20ch; }
   /* the one accent word in a headline: Bodoni Moda italic, a touch larger to match the sans optically */
-  :is(.hero-title, .section-title, .page-title, .car-h, .summary-title, .sheet-title, .deck-title) em {
+  :is(.hero-title, .section-title, .page-title, .summary-title, .sheet-title) em {
     font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 1.07em; line-height: 0; letter-spacing: -.012em;
     font-stretch: normal; color: var(--accent-2); padding-right: .06em; }
   /* a small chapter label above a section title: "02 · Just in" */
@@ -166,18 +166,6 @@
   @media (max-width: 899px) { .nav.is-hidden { translate: 0 0; } }
 
   /* bottom tab bar (phones) */
-  .tabbar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: none; grid-template-columns: repeat(5, 1fr);
-    height: var(--tab-h); padding-bottom: env(safe-area-inset-bottom); background: var(--ink); border-top: 1px solid var(--line);
-  }
-  .tab { display: grid; place-items: center; align-content: center; gap: 3px; color: var(--fog); font-size: .75rem; font-weight: 650; min-height: var(--tap); }
-  .tab svg { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .tab .mark { width: 1.7rem; filter: none; }
-  .tab[aria-current] { color: var(--bone); }
-  .tab[aria-current] svg { stroke: var(--accent); }
-  .tab--call { color: #fff; }
-  .tab--call svg { stroke: var(--accent); }
-  @media (max-width: 899px) { .tabbar { display: grid; } }
 
   /* ---------------------------------------------------------------- hero */
   .hero { position: relative; min-height: 100vh; min-height: 100svh; display: grid; align-items: end; overflow: hidden; isolation: isolate; }
@@ -187,8 +175,8 @@
   /* ---- intro: darkness, headlights, pull-back. Only opacity and transform are animated. ---- */
   .hero-dark { position: absolute; inset: 0; background: var(--night); opacity: 0; pointer-events: none; will-change: opacity; }
   html.play-intro .hero-dark { opacity: 1; }
-  html.play-intro .nav, html.play-intro .tabbar { opacity: 0; }
-  html.play-intro .nav, html.play-intro .tabbar { pointer-events: none; } /* out of sight is out of reach: they sit over the Skip and Sound buttons */
+  html.play-intro .nav { opacity: 0; }
+  html.play-intro .nav { pointer-events: none; } /* out of sight is out of reach: they sit over the Skip and Sound buttons */
   /* the car, live in 3D, over the still of itself */
   html.has-3d .hero-img { visibility: hidden; }
   .hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .7s ease; }
@@ -457,10 +445,6 @@
   @media (max-width: 700px) { .tray-cars, .tray-label { display: none; } .tray-inner { justify-content: space-between; } }
 
   .mini-grid { margin-top: var(--s5); display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
-  .mini { display: grid; gap: var(--s1); }
-  .mini img { aspect-ratio: 16/10; object-fit: cover; border-radius: var(--r-sm); background: var(--panel); }
-  .mini-name { font-weight: 650; }
-  .mini-price { color: var(--fog); font-size: .875rem; }
 
   /* ---------------------------------------------------------------- car page */
   .car-page { padding-top: calc(var(--nav-h) + var(--s5)); padding-bottom: var(--s9); }
@@ -474,7 +458,7 @@
   .gal-arrow { top: 50%; translate: 0 -50%; width: 3rem; height: 3rem; }
   .gal-arrow:hover, .gal-expand:hover { background: var(--ink); }
   .gal-prev { left: var(--s4); } .gal-next { right: var(--s4); }
-  :is(.gal-arrow, .gal-expand, .lb-arrow, .lb-close, .rail-arrows button) svg { width: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  :is(.gal-arrow, .gal-expand, .lb-arrow, .lb-close) svg { width: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .gal-expand { right: var(--s4); bottom: var(--s4); height: var(--tap); padding-inline: var(--s4); grid-auto-flow: column; gap: var(--s2); font-weight: 700; font-size: .8125rem; }
   /* thumbnails share the width and wrap to a second row if needed: they can never push the page wider than the screen */
   /* one even row of thumbnails that always fills the width exactly (six at most; a "+3" tile opens the rest) */
@@ -491,8 +475,6 @@
   .summary-title { font-weight: 780; font-size: clamp(2rem, 3.6vw, 3rem); line-height: .95; letter-spacing: -.03em; }
   .summary-price { padding-block: var(--s4); border-block: 1px solid var(--line); }
   .summary-amount { font-weight: 850; font-size: clamp(2rem, 3.2vw, 2.6rem); line-height: 1; font-stretch: 118%; color: #fff; }
-  .summary-monthly { margin-top: var(--s2); color: var(--fog); }
-  .summary-monthly strong { color: var(--bone); }
   .summary-contact { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
   .summary-contact .btn { padding-inline: var(--s3); }
   @media (max-width: 359px) { .summary-contact { grid-template-columns: 1fr; } }
@@ -527,7 +509,6 @@
   .buybar .car-status { position: static; }
   @media (max-width: 899px) {
     body.page-car { --tab-h: 0px; }
-    body.page-car .tabbar { display: none; }
     body.page-car .buybar { translate: 0 0; }
     body.page-car { padding-bottom: 5.5rem; }
   }
@@ -796,7 +777,6 @@
   .car-tools { z-index: 2; }
   .car-foot { margin-top: auto; padding-top: var(--s4); border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
   .car-price { font-weight: 850; font-size: 1.375rem; line-height: 1.1; font-stretch: 112%; color: #fff; text-align: left; }
-  .car-monthly { margin-top: 2px; font-size: .8125rem; color: var(--fog); text-align: left; white-space: normal; }
   .car-title a:hover { color: inherit; }
   .car:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
   .car:has(.car-title a:focus-visible) .car-title a { outline: none; }
@@ -822,7 +802,7 @@
    any panel, and toasts, notices and the compare bar in the same palette instead of white slabs.
    ===================================================================== */
 @layer components {
-  :is(.summary, .swap-box, .money-box, .fin-mini-box, .book-form, .wizard, .calc, .panel, .about-box, .inv-filters, .estimate, .search, .form-done) {
+  :is(.summary, .fin-mini-box, .wizard, .calc, .panel, .inv-filters, .estimate, .search) {
     background: var(--surface); border: 0; box-shadow: var(--surface-edge), var(--shadow-lg);
   }
   .car { background: var(--surface); border: 0; box-shadow: var(--surface-edge), var(--shadow-lg); }
@@ -877,14 +857,6 @@
   .wordmark span { transition: opacity .35s, translate .45s var(--ease); }
 
   /* the dock (phones): five places under the thumb, a pill behind the current one */
-  .tabbar { background: rgb(56 55 54 / .97); border-top: 1px solid var(--hair); box-shadow: 0 -12px 30px -18px rgb(14 14 13 / .8); padding-inline: var(--s2); view-transition-name: tabbar; }
-  .tab { position: relative; z-index: 1; border: 0; background: none; font: inherit; font-size: .75rem; font-weight: 650; color: var(--fog); min-height: 52px; gap: 4px; transition: color .25s, transform .3s var(--spring); }
-  .tab:active { transform: scale(.92); }
-  .tab[aria-current] { color: var(--bone); }
-  .tab-pill { position: absolute; left: 0; top: 7px; width: 4.25rem; height: 52px; border-radius: 16px; opacity: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgb(209 205 201 / .2), rgb(209 205 201 / .08)); box-shadow: inset 0 0 0 1px rgb(209 205 201 / .25); view-transition-name: tab-pill; }
-  .tabbar.is-ready .tab-pill { transition: transform .5s var(--ease), opacity .3s; }
-  .tab--call svg { stroke: var(--accent); }
 
   /* the menu: a bottom sheet over a dimmed page */
   .sheet-scrim { position: fixed; inset: 0; z-index: 130; background: rgb(15 14 14 / .55); opacity: 0; transition: opacity .4s; }
@@ -944,7 +916,7 @@
   .curtain-side--r .cl-2 { box-shadow: inset 2px 0 0 var(--chrome); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sheet, .sheet-scrim, .nav-ink.is-ready, .tabbar.is-ready .tab-pill { transition: none; }
+  .sheet, .sheet-scrim, .nav-ink.is-ready { transition: none; }
 }
 
 /* =====================================================================

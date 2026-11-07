@@ -282,10 +282,6 @@ export function carJsonLd(c) {
 }
 
 /* ------------------------------------------------------------------ car page */
-export function honeypot() {
-  return `<div class="hp" aria-hidden="true"><label>Leave this field empty<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>`;
-}
-
 export function carPageHTML(c, P = '../') {
   const name = carName(c);
   const n = c.images.length;

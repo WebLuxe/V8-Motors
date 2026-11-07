@@ -19,7 +19,6 @@ export const CARS = INVENTORY.cars.map((c) => ({
   status: c.deal ? 'Saturday deal' : syncedAt - Date.parse(c.added) < 14 * DAY ? 'Just arrived' : 'In stock',
 }));
 
-export const SYNCED_AT = INVENTORY.syncedAt;
 export const byId = (id) => CARS.find((c) => c.id === id);
 export const carName = (c) => `${c.year} ${c.make} ${c.model}`;
 export const rs = (n) => 'Rs ' + Math.round(n).toLocaleString('en-US');
@@ -30,12 +29,6 @@ export const km = (n) => (n == null ? 'Ask us' : n.toLocaleString('en-US') + ' k
 export const large = (c, i = 0, P = '') => `${P}images/cars/${c.id}/${i}-1280.webp`;
 
 export const thumb = (c, i = 0, w = 480, P = '') => `${P}images/cars/${c.id}/${i}-${i === 0 ? w : 480}.webp`;
-
-/** The dearest car a monthly figure pays for, on the same example terms as monthly(). */
-export function priceForMonthly(m, depositPct = 20, months = 60, rate = DEALER.financeRate) {
-  const r = rate / 100 / 12;
-  return (m * (1 - Math.pow(1 + r, -months))) / r / (1 - depositPct / 100);
-}
 
 export function monthly(price, depositPct = 20, months = 60, rate = DEALER.financeRate) {
   const principal = price * (1 - depositPct / 100);

@@ -4,18 +4,18 @@
 @media (prefers-reduced-motion: no-preference) {
   .btn { transition: color .3s, border-color .3s, box-shadow .3s, background-color .2s, scale .35s var(--spring), translate .35s var(--spring); }
 
-  .chip, .term, .tool, .save, .car-compare, .finder-reset, .view-toggle button, .gal-arrow, .gal-expand, .mini,
+  .chip, .term, .tool, .save, .car-compare, .finder-reset, .view-toggle button, .gal-arrow, .gal-expand,
   .pill > span, .body-opt > span, .cond > span {
     transition: background-color .2s, color .2s, border-color .2s, box-shadow .2s, scale .35s var(--spring), translate .35s var(--spring);
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .btn:hover, .chip:hover, .term:hover, .tool:hover, .car-compare:hover, .finder-reset:hover, .mini:hover,
+    .btn:hover, .chip:hover, .term:hover, .tool:hover, .car-compare:hover, .finder-reset:hover,
     .pill:hover > span, .body-opt:hover > span, .cond:hover > span { translate: 0 -1px; }
   }
 
   .btn:active, .chip:active, .term:active, .tool:active, .save:active, .car-compare:active, .finder-reset:active, .view-toggle button:active,
-  .gal-arrow:active, .gal-expand:active, .mini:active, .pill:active > span, .body-opt:active > span, .cond:active > span {
+  .gal-arrow:active, .gal-expand:active, .pill:active > span, .body-opt:active > span, .cond:active > span {
     scale: .965; translate: 0 0; transition-duration: .2s, .2s, .2s, .2s, .1s, .1s;
   }
 }

@@ -8,7 +8,7 @@ import { DARK, HERO } from '../lib/rover-shots.js';
 import { markSlow, gpuInfo } from '../lib/device.js';
 
 const ENGINE = new URL('media/intro/engine.mp3', document.baseURI).href;
-const NAVS = ['[data-nav]', '.tabbar'];
+const NAVS = ['[data-nav]'];
 const GAIN = 0.8; // playback level (the recording itself is mastered quietly)
 /* The intro opens on the first flash of the high beams: everything before it in the film below is skipped, the sound with it.
    Its numbers stay in the time of the whole film, so CUT is the only thing that says where it starts. */

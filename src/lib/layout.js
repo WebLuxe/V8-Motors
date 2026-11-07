@@ -273,39 +273,6 @@ function initNavInk() {
   addEventListener('resize', home, { passive: true });
   document.fonts?.ready.then(home);
 }
-function initDock() {
-  const bar = $('[data-tabbar]'), pill = $('[data-tab-pill]');
-  if (!bar || !pill) return;
-  const place = () => {
-    const cur = $('.tab[aria-current]', bar);
-    if (!cur) { pill.style.opacity = '0'; return; }
-    pill.style.opacity = '1';
-    pill.style.transform = `translateX(${cur.offsetLeft + (cur.offsetWidth - pill.offsetWidth) / 2}px)`;
-  };
-  place();
-  requestAnimationFrame(() => bar.classList.add('is-ready'));
-  addEventListener('resize', place, { passive: true });
-  // the pill moves as soon as a tab is tapped, so a page the Back button restores from memory still shows the tab you left for
-  const own = $('.tab[aria-current]', bar);
-  addEventListener('pageshow', (e) => {
-    if (!e.persisted) return;
-    $$('.tab[aria-current]', bar).forEach((x) => x.removeAttribute('aria-current'));
-    own?.setAttribute('aria-current', 'page');
-    place();
-  });
-  document.fonts?.ready.then(place);
-  // tapping a tab: the pill glides to it straight away, while the curtain closes over the page
-  bar.addEventListener('click', (e) => {
-    const t = e.target.closest('a.tab[href]');
-    if (!t || t.classList.contains('tab--call') || t.hasAttribute('aria-current')) return;
-    $$('.tab[aria-current]', bar).forEach((x) => x.removeAttribute('aria-current'));
-    t.setAttribute('aria-current', 'page');
-    place();
-  });
-  // a tiny haptic tick under the thumb (Android)
-  bar.addEventListener('pointerdown', (e) => { if (e.target.closest('.tab') && e.pointerType === 'touch') navigator.vibrate?.(6); }, { passive: true });
-}
-
 /* ------------------------------------------------------------------ menu: a bottom sheet
    Opens from the dock's Menu button. It slides up over a dimmed page (never full screen), follows your
    finger if you drag it down, and closes on a flick down, a tap outside, the close button or Escape. */
@@ -494,7 +461,6 @@ export function initLayout({ home = false, immersive = false } = {}) {
   initLens();
   photosArrive();
   initNavInk();
-  initDock();
   initMenu();
   $$('[data-open-status]').forEach(renderStatus);
   initScroll();
