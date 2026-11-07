@@ -46,6 +46,7 @@ uniform vec2 uView;           // the window, in page pixels
 uniform float uScale;         // canvas pixels to one page pixel
 uniform float uTime, uScroll;
 uniform vec3 uLight;          // the soft light under the mouse: where, and how much
+uniform vec3 uTilt;           // the mouse as a tilt of the whole sheet (-.5 to .5 each way), and how fast it is moving
 uniform vec2 uSun;            // which way the light falls on the rims, a little different as the mouse moves
 uniform vec4 uRect[${MAX}];   // panels: centre x, y, half width, half height
 uniform vec4 uInfo[${MAX}];   // corner radius, width of the lens rim, roundness of that rim, how much of the panel is showing
@@ -60,22 +61,25 @@ out vec4 frag;
 // ---- the steel. Broad light and dark bands across polished metal, drifting very slowly. It is all smooth, so it can be asked for
 // anywhere for the same small price, and the frosted version needs nothing extra
 float bands(vec2 p) {
-  vec2 v = vec2(p.x, p.y + uScroll) / uView.y;
+  vec2 v = vec2(p.x, p.y + uScroll) / uView.y + uTilt.xy * vec2(1.1, .75); // moving the mouse tilts the metal, so the bands slide
+  // and the sheet dents a little round the pointer, more while it moves fast, like a thumb pressed into foil
+  vec2 m = (p - uLight.xy) / uView.y;
+  v -= m * uLight.z * (.32 + .8 * uTilt.z) * exp(-dot(m, m) * 7.);
   float a = v.x * .94 + v.y * .58;
   float w = sin(v.y * 1.7 - v.x * .6 + uTime * .043) * .34;
   float wide = sin(a * 3.4 + w * 2.2 + uTime * .051);
   float mid = sin(a * 8.3 - w * 3.1 - uTime * .083 + 1.7);
   float s = .5 + .33 * wide + .14 * mid; // stays inside 0 to 1, so the light never sits in flat shelves
   // a slow bright reflection wandering across it
-  float g = a - 1.6 - 1.4 * sin(uTime * .037);
+  float g = a - 1.6 - 1.4 * sin(uTime * .037) + uTilt.x * 2.4 + uTilt.y * 1.1;
   return clamp(s + .2 * exp(-g * g * 14.), 0., 1.);
 }
 vec3 silver(vec2 p) {
   float s = bands(p);
   // one long roll from light to dark, with no flat stretches
   vec3 c = mix(vec3(.72, .745, .78), vec3(.94, .947, .958), smoothstep(-.1, 1.1, s));
-  vec2 m = (p - uLight.xy) / 400.;
-  c += uLight.z * .075 * exp(-dot(m, m));
+  vec2 m = (p - uLight.xy) / 460.;
+  c += uLight.z * (.13 + .08 * uTilt.z) * exp(-dot(m, m));
   vec2 e = p / uView - .5;
   return c * (1. - .08 * dot(e, e));
 }
@@ -280,7 +284,7 @@ export function initGlass() {
       return;
     }
     gl.useProgram(program);
-    for (const k of ['uView', 'uScale', 'uTime', 'uScroll', 'uLight', 'uSun', 'uRect', 'uInfo', 'uCar', 'uWay', 'uCell', 'uCars', 'uTiles', 'uBrush', 'uSheet']) u[k] = gl.getUniformLocation(program, k);
+    for (const k of ['uView', 'uScale', 'uTime', 'uScroll', 'uLight', 'uTilt', 'uSun', 'uRect', 'uInfo', 'uCar', 'uWay', 'uCell', 'uCars', 'uTiles', 'uBrush', 'uSheet']) u[k] = gl.getUniformLocation(program, k);
     gl.uniform1i(u.uTiles, 0); gl.uniform1i(u.uBrush, 1); gl.uniform1i(u.uSheet, 2);
     ready = true;
     size();
@@ -392,7 +396,7 @@ export function initGlass() {
   };
 
   /* ---- the soft light under the mouse */
-  let mouseX = 0, mouseY = 0, lightX = 0, lightY = 0, glow = 0, seen = false;
+  let mouseX = 0, mouseY = 0, lightX = 0, lightY = 0, glow = 0, seen = false, tiltX = 0, tiltY = 0, stir = 0;
   if (!reduced) {
     addEventListener('pointermove', (e) => {
       mouseX = e.clientX; mouseY = e.clientY;
@@ -404,7 +408,12 @@ export function initGlass() {
     const k = 1 - Math.exp(-dt * 8), dx = mouseX - lightX, dy = mouseY - lightY;
     lightX += dx * k; lightY += dy * k;
     glow += (1 - glow) * Math.min(1, dt * 3);
-    return Math.abs(dx) + Math.abs(dy) > 0.5 || glow < 0.99;
+    // the tilt follows more lazily than the light, which is what makes it feel like a heavy sheet of metal
+    const t = 1 - Math.exp(-dt * 2.4), ex = mouseX / W - 0.5 - tiltX, ey = mouseY / H - 0.5 - tiltY;
+    tiltX += ex * t; tiltY += ey * t;
+    const pace = dt > 0 ? Math.min(1, Math.hypot(dx, dy) / Math.max(dt, 0.001) / 2600) : 0;
+    stir += (pace - stir) * Math.min(1, dt * (pace > stir ? 6 : 1.6));
+    return Math.abs(dx) + Math.abs(dy) > 0.5 || glow < 0.99 || Math.abs(ex) + Math.abs(ey) > 0.002 || stir > 0.005;
   };
 
   /* ---- the cars. Nothing, nothing, then one to four of them flat out and gone. Each picks its own side and its own slope, and
@@ -488,6 +497,7 @@ export function initGlass() {
     gl.uniform1f(u.uTime, clock);
     gl.uniform1f(u.uScroll, reduced ? 0 : y * 0.1);
     gl.uniform3f(u.uLight, lightX, lightY, glow);
+    gl.uniform3f(u.uTilt, tiltX, tiltY, stir);
     const sx = -1 + (seen ? (lightX / W - 0.5) * 0.7 : 0), sy = -1 + (seen ? (lightY / H - 0.5) * 0.7 : 0), s = Math.hypot(sx, sy);
     gl.uniform2f(u.uSun, sx / s, sy / s);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

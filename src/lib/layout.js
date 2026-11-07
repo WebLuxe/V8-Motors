@@ -118,10 +118,10 @@ function initCurtain() {
     label.textContent = stash(() => sessionStorage.getItem('v8:curtain')) || '';
     stash(() => sessionStorage.removeItem('v8:curtain'));
     gsap.timeline({ onComplete: () => { html.classList.remove('curtain-in'); gsap.set([...L, ...R, mid], { clearProps: 'all' }); resolveOpen(); } })
-      .to(mid, { opacity: 0, y: -14, duration: 0.25, ease: 'power2.in' }, 0.05)
-      .to([...L].reverse(), { xPercent: -101, duration: 0.8, ease: 'expo.inOut', stagger: 0.06 }, 0.15)
-      .to([...R].reverse(), { xPercent: 101, duration: 0.8, ease: 'expo.inOut', stagger: 0.06 }, 0.15);
-    setTimeout(resolveOpen, 550); // let the page start its own entrance while the curtain is still opening
+      .to(mid, { opacity: 0, y: -14, duration: 0.2, ease: 'power2.in' }, 0)
+      .to([...L].reverse(), { xPercent: -101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08)
+      .to([...R].reverse(), { xPercent: 101, duration: 0.7, ease: 'expo.inOut', stagger: 0.05 }, 0.08);
+    setTimeout(resolveOpen, 420); // let the page start its own entrance while the curtain is still opening
   } else {
     stash(() => sessionStorage.removeItem('v8:curtain'));
     resolveOpen();
@@ -158,10 +158,9 @@ function initCurtain() {
     label.textContent = name;
     c.classList.add('is-active');
     gsap.timeline({ onComplete: () => { stash(() => sessionStorage.setItem('v8:curtain', name)); location.assign(url.href); } })
-      .fromTo(L, { xPercent: -101 }, { xPercent: 0, duration: 0.6, ease: 'power3.inOut', stagger: 0.075 }, 0)
-      .fromTo(R, { xPercent: 101 }, { xPercent: 0, duration: 0.6, ease: 'power3.inOut', stagger: 0.075 }, 0)
-      .fromTo(mid, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' }, 0.5)
-      .to({}, { duration: 0.08 });
+      .fromTo(L, { xPercent: -101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
+      .fromTo(R, { xPercent: 101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
+      .fromTo(mid, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out' }, 0.4);
   });
   // coming back via the back button restores the old page from cache: make sure it's open
   addEventListener('pageshow', (e) => {
@@ -194,6 +193,10 @@ const cardPhoto = (url) => {
   return best;
 };
 function initMorph() {
+  // the curtain and the browser's own page change must never both run: the browser's lifts the menu bar and a car photo above
+  // the closed curtain and fades two curtains into each other. When the curtain carried the change, the browser's is skipped
+  addEventListener('pageswap', (e) => { if (document.querySelector('[data-curtain].is-active')) e.viewTransition?.skipTransition(); });
+  addEventListener('pagereveal', (e) => { if (html.classList.contains('curtain-in')) e.viewTransition?.skipTransition(); });
   if (!morphs) return;
   // a catalogue card off screen skips drawing (content-visibility), and on a fresh page so does every card for the first frame,
   // which is the one the browser photographs: the named card is drawn regardless, until the change is over

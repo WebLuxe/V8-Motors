@@ -105,10 +105,12 @@ export function carCard(c, P = '', { eager = false, sizes = '(min-width: 1000px)
 
 /* ------------------------------------------------------------------ chrome */
 export const NAV_PAGES = [
+  { key: 'home', href: './', label: 'Home' },
   { key: 'inventory', href: 'inventory.html', label: 'Catalogue' },
   { key: 'sell', href: 'sell.html', label: 'Sell' },
   { key: 'finance', href: 'finance.html', label: 'Leasing' },
   { key: 'contact', href: 'contact.html', label: 'Visit us' },
+  { key: 'compare', href: 'compare.html', label: 'Compare' },
 ];
 
 /** Page-change curtain: three layers per side sweep in, meet in the middle, then open on the next page. */
@@ -177,7 +179,7 @@ export function menuSheetHTML(page, P = '') {
 }
 
 export function footerHTML(P = '') {
-  const pages = [{ href: './', label: 'Home' }, ...NAV_PAGES, { href: 'compare.html', label: 'Compare' }];
+  const pages = NAV_PAGES;
   return `<footer class="footer">
     <div class="wrap">
       <div class="footer-grid">
@@ -203,7 +205,7 @@ export function footerHTML(P = '') {
 export function headHTML({ title, desc, path, image, jsonld = [], P = '' }) {
   const url = SITE + path;
   const img = image || `${SITE}og.jpg`;
-  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');
+  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');addEventListener('pagereveal',function(e){if(e.viewTransition&&d.classList.contains('curtain-in'))e.viewTransition.skipTransition()});
     /* if the page script never runs (offline, blocked), don't leave the intro or hidden content in the way */
     setTimeout(function(){if(!window.__v8){d.classList.remove('play-intro','js');}},9000);}catch(e){}})(document.documentElement)</script>
   <script type="speculationrules">{"prefetch":[{"where":{"and":[{"selector_matches":"a[href]"},{"not":{"selector_matches":"[rel~=noopener],[href^='tel:'],[href^='mailto:'],[href*='://']"}}]},"eagerness":"moderate"}]}</script>

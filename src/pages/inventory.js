@@ -156,6 +156,7 @@ function renderGarage(s) {
   send.href = `https://wa.me/${DEALER.whatsapp}?text=${encodeURIComponent(`Hi V8 Motors, these are the cars I saved:\n${lines}\nAre they still available, and when can I come and see them?`)}`;
 }
 
+let flipTl = null;
 function render({ animate = true, keepShown = false } = {}) {
   const s = readState();
   writeUrl(s);
@@ -163,7 +164,10 @@ function render({ animate = true, keepShown = false } = {}) {
   const list = CARS.filter((c) => matches(c, s)).sort(SORTS[s.sort]);
   const visible = list.slice(0, shown);
   if (animate) calm(grid);
-  const flip = animate && !reduced ? Flip.getState([...cards.values()]) : null;
+  // only the cards on show are measured: a hidden card has no place, so Flip used to fly it in from the top corner
+  flipTl?.progress(1).kill(); flipTl = null;
+  const before = new Set([...cards].filter(([, li]) => !li.hidden).map(([id]) => id));
+  const flip = animate && !reduced ? Flip.getState([...cards.values()].filter((li) => !li.hidden)) : null;
   const vis = new Set(visible.map((c) => c.id));
   visible.forEach((c) => grid.appendChild(cards.get(c.id)));
   cards.forEach((li, id) => (li.hidden = !vis.has(id)));
@@ -187,13 +191,13 @@ function render({ animate = true, keepShown = false } = {}) {
   $('[data-wa-alert]').href = `https://wa.me/${DEALER.whatsapp}?text=${wa}`;
 
   if (flip) {
-    Flip.from(flip, {
-      duration: 0.65, ease: 'expo.out', absolute: true, stagger: 0.015, nested: true, prune: true,
-      onEnter: (els) => gsap.fromTo(els, { opacity: 0, y: 30, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'expo.out', stagger: 0.03 }),
-      onLeave: (els) => gsap.to(els, { opacity: 0, scale: 0.94, duration: 0.3 }),
-      onComplete: () => ScrollTrigger.refresh(),
-    });
-  }
+    // cards that stay slide to their new place; cards that come in fade up where they will sit; cards that go simply go
+    const stay = visible.filter((c) => before.has(c.id)).map((c) => cards.get(c.id));
+    const fresh = visible.filter((c) => !before.has(c.id)).map((c) => cards.get(c.id))
+      .filter((li) => { const r = li.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
+    flipTl = Flip.from(flip, { targets: stay, duration: 0.55, ease: 'expo.out', absolute: false, onComplete: () => ScrollTrigger.refresh() });
+    if (fresh.length) gsap.fromTo(fresh, { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.55, ease: 'expo.out', stagger: 0.03, overwrite: true, clearProps: 'opacity,transform' });
+  } else ScrollTrigger.refresh();
 }
 
 let t;

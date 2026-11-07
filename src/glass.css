@@ -117,7 +117,7 @@ html { background: #d3d9e0; scrollbar-color: #9aa3ae #d3d9e0; }
   .way-btn { background: rgb(18 20 24 / .06); }
   .way-btn:first-child { color: #fff; }
   .curtain .cl-2 { background: #c7ced7; }
-  .curtain .cl-3 { background: #eef1f5; }
+  .curtain .cl-3 { background: #eef1f5; box-shadow: none; } /* no hairline down the middle, through the name */
   .tray-inner { color: var(--bone); background: rgb(246 248 250 / .92); }
   .tray-cars li { background: rgb(255 255 255 / .6); }
   .buybar { background: rgb(255 255 255 / .72); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border-top: 0; box-shadow: var(--glass-edge); }
@@ -753,7 +753,11 @@ html { background: #d3d9e0; scrollbar-color: #9aa3ae #d3d9e0; }
    The browser carries the change itself: a soft cross-fade, and the car's photo growing from its card into the car page */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
-  ::view-transition-group(root) { animation-duration: .36s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  /* Back and Forward: the old page fades away first and the new one rises in after it, so the two never show through each other */
+  ::view-transition-old(root) { animation: vt-out .16s cubic-bezier(.4, 0, 1, 1) both; }
+  ::view-transition-new(root) { animation: vt-in .32s .15s cubic-bezier(.2, .8, .2, 1) both; }
+  @keyframes vt-out { to { opacity: 0; } }
+  @keyframes vt-in { from { opacity: 0; translate: 0 10px; } }
   ::view-transition-group(car-photo) { z-index: 10; animation-duration: .56s; animation-timing-function: cubic-bezier(.22, .8, .2, 1); }
   ::view-transition-image-pair(car-photo) { overflow: hidden; border-radius: 16px; }
   ::view-transition-old(car-photo), ::view-transition-new(car-photo) { width: 100%; height: 100%; object-fit: cover; animation-duration: .56s; }
