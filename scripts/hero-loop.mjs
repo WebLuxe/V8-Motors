@@ -6,8 +6,8 @@
 //
 // The clock is stepped by hand (see scripts/film.mjs), so every frame is sharp whatever the machine. The loop is LOOP seconds;
 // one more second is rendered so the end can be cross-faded into the start and the seam never shows. Then, in the work folder:
-//   ffmpeg -framerate 30 -i portrait/%04d.jpg -filter_complex "[0]split[a][b];[a]trim=1:13,setpts=PTS-STARTPTS[body];[b]trim=0:1,setpts=PTS-STARTPTS[head];[body][head]xfade=transition=fade:duration=1:offset=11,scale=720:1560:flags=lanczos,format=yuv420p" -c:v libx264 -preset veryslow -crf 27 -profile:v high -g 60 -movflags +faststart -an loop-portrait.mp4
-// (landscape: scale=1280:720). Copy them to public/media/hero/.
+//   ffmpeg -framerate 30 -i portrait/%04d.jpg -filter_complex "[0]split[a][b];[a]trim=1:13,setpts=PTS-STARTPTS[body];[b]trim=0:1,setpts=PTS-STARTPTS[head];[body][head]xfade=transition=fade:duration=1:offset=11,scale=720:1560:flags=lanczos,format=yuv420p" -c:v libx264 -preset veryslow -crf 27 -profile:v high -level 4.0 -g 60 -movflags +faststart -an loop-portrait.mp4
+// (landscape: scale=1280:720). Copy them to public/media/hero/. Level 4.0 is enough for both and every phone decodes it in hardware.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT + '/index.mjs').href);

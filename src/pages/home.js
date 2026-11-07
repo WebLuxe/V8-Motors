@@ -267,24 +267,81 @@ function prepareFilm(onProgress = () => {}) {
   v.setAttribute('playsinline', '');
   v.setAttribute('aria-hidden', 'true');
   dark.before(v);
-  // ready means the rest will arrive before it is needed, judged by how fast it has been arriving so far
-  const began = performance.now();
+  v.began = performance.now();
   const report = () => {
-    if (!v.duration || !v.buffered.length) return;
-    const have = v.buffered.end(v.buffered.length - 1), rate = have / Math.max(0.2, (performance.now() - began) / 1000);
-    onProgress(have > 1.5 && (v.duration - have) / rate < v.duration * 0.8 ? 1 : Math.min(0.97, have / v.duration));
-    if (have >= v.duration - 0.5) filmFetched();
+    const { through, part } = filmAhead(v);
+    onProgress(through ? 1 : part);
+    if (v.buffered.length && v.duration && v.buffered.end(v.buffered.length - 1) >= v.duration - 0.5) filmFetched();
   };
   const paused = () => { onProgress(1); filmFetched(); }; // the browser has taken all it means to before the tap
   v.addEventListener('progress', report);
   v.addEventListener('suspend', paused);
   v.addEventListener('error', () => {
-    if (v.src !== file(FILM.src)) { v.src = file(FILM.src); v.load(); } // it said it could: fall back to the one every phone plays
-    else paused();
+    if (v.src !== file(FILM.src)) {
+      // it said it could play the smaller file and couldn't: the one every phone plays, and if it was already asked to play,
+      // it carries on (filmReady waits for it)
+      v.src = file(FILM.src);
+      v.began = performance.now();
+      v.load();
+    } else { v.failed = true; paused(); }
   });
   if (/iPhone|iPod/.test(navigator.userAgent)) onProgress(1);
   v.load();
   return v;
+}
+
+/** How much of the film is here, and whether the rest will arrive before it is needed (judged by how fast it has been arriving
+    so far), so it can play right through without stopping. part: 0..1, for the button's ring. */
+function filmAhead(v) {
+  if (!v.duration || !v.buffered.length) return { through: false, part: 0 };
+  const have = v.buffered.end(v.buffered.length - 1), left = v.duration - have;
+  const rate = have / Math.max(0.2, (performance.now() - v.began) / 1000); // seconds of film arriving per second
+  const through = left < 0.5 || (have - v.currentTime > 1.5 && left / rate < (v.duration - v.currentTime) * 0.8);
+  return { through, part: Math.min(0.97, have / v.duration) };
+}
+
+/** Plays the film with its sound if the browser allows it, and silently if it only allows that. Only a refusal counts as failing:
+    an interruption (a pause or a reload asked for meanwhile) is not one. */
+function playFilm(v, sound) {
+  v.muted = !sound;
+  return v.play().then(() => true, (e) => {
+    if (e?.name === 'AbortError') return false;
+    if (sound) return playFilm(v, false);
+    v.failed = true;
+    return false;
+  });
+}
+
+/** After the tap: the start button stays, saying how far along the film is ("Warming up · 64%"), until the film can play right
+    through, and only then does it start. So a slow connection waits at the button instead of freezing in the middle of the film,
+    and the button never gives way to a black screen. Resolves true once the film is really playing; false if it can't play at all,
+    or nothing at all has arrived for 12 seconds, and the page then comes up without it. After 20 seconds it starts anyway. */
+function filmReady(v, gate) {
+  return new Promise((resolve) => {
+    const note = $('[data-gate-note]', gate);
+    const since = performance.now();
+    let done = false, moved = since, had = -1, asked = false;
+    const finish = (ok) => { if (done) return; done = true; clearInterval(timer); gate.classList.remove('is-waiting'); resolve(ok); };
+    const check = () => {
+      if (v.failed) return finish(false);
+      const { through, part } = filmAhead(v);
+      const have = v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0;
+      if (have > had + 0.01 || v.currentTime > 0.05) { had = have; moved = performance.now(); }
+      if (!v.paused && v.currentTime > 0.02 && v.readyState >= 3) return finish(true);
+      // twenty seconds at the button is long enough: it starts with what it has, and catches up as it goes
+      const enough = through || (performance.now() - since > 20000 && have - v.currentTime > 1);
+      if (enough && v.readyState >= 3) {
+        if (v.paused && !asked) { asked = true; playFilm(v, true).then((ok) => { asked = false; if (!ok && v.failed) finish(false); }); }
+        return;
+      }
+      gate.classList.add('is-waiting');
+      gate.style.setProperty('--load', part.toFixed(3));
+      if (note) note.textContent = `Warming up · ${Math.round(part * 100)}%`;
+      if (performance.now() - moved > 12000) finish(false);
+    };
+    const timer = setInterval(check, 120);
+    check();
+  });
 }
 
 function waitForChoice(gate, film) {
@@ -292,7 +349,15 @@ function waitForChoice(gate, film) {
     let done = false;
     const pick = (v) => () => { if (done) return; done = true; removeEventListener('keydown', onKey); resolve(v); };
     const onKey = (e) => { if (e.key === 'Escape') pick('skip')(); };
-    const startFilm = () => { if (film) { film.muted = false; film.play().catch(() => { film.muted = true; film.play().catch(() => { film.failed = true; }); }); } };
+    // sound and picture have to be started by the tap itself. A film that isn't ready to play through yet is started and stopped
+    // again inside the tap, which is what lets it start later, with its sound, without another tap (filmReady)
+    const startFilm = () => {
+      if (!film) return;
+      if (filmAhead(film).through && film.readyState >= 3) { playFilm(film, true); return; }
+      film.muted = false;
+      film.play().catch(() => {});
+      film.pause();
+    };
     const button = $('[data-ignite]', gate);
     // the button answers the moment a finger or the mouse goes down, before the click has even finished
     button.addEventListener('pointerdown', () => gate.classList.add('is-pressed'));
@@ -301,7 +366,6 @@ function waitForChoice(gate, film) {
       performance.mark('v8:press'); // for timing the press: see how long until the first frame of the intro
       gate.classList.add('is-pressed');
       if (!done && matchMedia('(pointer: coarse)').matches) navigator.vibrate?.(14); // a short buzz, like a real start button, where the phone can
-      // sound and picture have to be started by the tap itself
       if (!done) startFilm();
       pick('sound')();
     });
@@ -363,18 +427,23 @@ async function runIntro() {
   if (!allSet) gate.classList.add('is-waiting');
   const { buffer, env } = await needs;
   loader.stop();
+  // the film has to be really playing before the button gives way to it (filmReady). If it can't play at all, the page comes up
+  // without it, with the filmed car, as when the 3D car can't start
+  const filmOn = film ? await filmReady(film, gate) : false;
+  if (film && !filmOn) { film.pause(); film.remove(); }
   // the button gives way to the film as it begins, rather than the film waiting for the button to go
   // (the browser's own animation, as above: on a struggling device the button must still be gone in under half a second)
   gate.animate([{ opacity: 1, scale: 1 }, { opacity: 0, scale: 1.03 }], { duration: 450, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' }).finished.then(() => gate.remove(), () => gate.remove());
-  const withSound = choice === 'sound' && (buffer || film);
+  const withSound = choice === 'sound' && (buffer || filmOn);
   if (withSound) dispatchEvent(new Event('v8:sound-on'));
   if (!withSound) audio?.ctx.close();
-  const full = stage || film; // the whole film, in 3D or as a video
+  const full = stage || (filmOn && film); // the whole film, in 3D or as a video
   if (!full) {
-    // nothing to show it with after all (the 3D car failed to start): never a black screen with only the sound. The page comes up
-    // at once, with the filmed car where it can play
+    // nothing to show it with after all (the 3D car failed to start, or the film can't play): never a black screen with only the
+    // sound. The page comes up at once, with the filmed car where it can play
     audio?.ctx.close();
-    if (!useLoop && moving3d) heroLoop();
+    if (useLoop) loop.then((v) => v?.release()); // it was being held back for the film's end
+    else if (moving3d) heroLoop();
     await gsap.timeline()
       .to(dark, { opacity: 0, duration: 0.9, ease: 'power2.inOut' }, 0)
       .to(bars, { scaleY: 0, duration: 0.8, ease: 'expo.inOut' }, 0)
@@ -526,6 +595,7 @@ async function runIntro() {
   gsap.from(controls, { opacity: 0, duration: 0.6, delay: 0.4 });
   let skipped = false, vol = null;
   $('[data-mute]', controls).hidden = !withSound;
+  if (film?.muted) { $('[data-mute]', controls).setAttribute('aria-pressed', 'true'); $('[data-mute]', controls).textContent = 'Sound on'; } // allowed to play, but only silently
   $('[data-mute]', controls).addEventListener('click', (e) => {
     if (!vol && !film) return;
     const off = e.currentTarget.getAttribute('aria-pressed') !== 'true';
@@ -552,9 +622,9 @@ async function runIntro() {
       gsap.to(film, { opacity: 0, duration: useLoop ? 0.6 : 0.36, ease: 'sine.inOut' }); // it plays on unseen: it is the clock and the sound
     });
   };
-  const carryOn = () => { if (!document.hidden && film && !film.ended && film.paused && !handed) film.play().catch(() => {}); };
+  let filmT = -1, filmMoved = performance.now(), lastTick = filmMoved;
+  const carryOn = () => { filmMoved = performance.now(); if (!document.hidden && film && !film.ended && film.paused && !handed) film.play().catch(() => {}); };
   if (film) document.addEventListener('visibilitychange', carryOn);
-  const tapped = performance.now();
 
   tl.time(CUT);
   await new Promise((resolve) => {
@@ -580,8 +650,14 @@ async function runIntro() {
     }
     const now = () => (film ? film.currentTime : withSound ? audio.ctx.currentTime : performance.now() / 1000);
     const tick = () => {
-      // a film that can't start (blocked, or a connection too slow to begin) is not worth waiting for
-      if (film && (film.failed || film.error || (film.currentTime < 0.05 && performance.now() - tapped > 7000))) skipped = true;
+      // a film that stops for good (the connection dropped, it can't play after all) is not worth waiting for: ten seconds without
+      // moving on. A gap between ticks is a hidden tab, not a stall
+      if (film) {
+        const at = performance.now();
+        if (film.currentTime !== filmT || at - lastTick > 1000) { filmT = film.currentTime; filmMoved = at; }
+        lastTick = at;
+        if (film.failed || (!film.ended && at - filmMoved > 10000)) skipped = true;
+      }
       if (skipped) {
         gsap.ticker.remove(tick);
         if (film) { film.pause(); handOver(); }
