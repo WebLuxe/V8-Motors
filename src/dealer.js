@@ -12,6 +12,8 @@ export const DEALER = {
     ['5532 9727', 'tel:+23055329727'],
   ],
   whatsapp: '23052590327',
+  tiktok: 'https://www.tiktok.com/@v8motorsltd', // given by the owner
+  tiktokName: '@v8motorsltd',
   email: 'veightmotorsv8@gmail.com',
   street: '59B Royal Road',
   locality: 'Coromandel',

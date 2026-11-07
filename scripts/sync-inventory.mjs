@@ -9,7 +9,7 @@ import sharp from 'sharp';
 const API = 'https://v8.farhaan.info/api';
 const PHOTO_HOST = 'https://v8.farhaan.info';
 const OUT = 'src/inventory.json';
-const THUMBS = 'public/stock';
+const THUMBS = 'public/images/cars'; // one folder per car: <car id>/<photo number>-<width>.webp
 
 const MAKES = { BMW: 'BMW', 'LAND ROVER': 'Land Rover', RANGE: 'Land Rover', SKODA: 'Skoda', KIA: 'Kia' };
 const MODELS = {
@@ -69,12 +69,13 @@ async function thumbs(cars) {
   const keep = new Set();
   const jobs = [];
   for (const c of cars) {
+    mkdirSync(`${THUMBS}/${c.id}`, { recursive: true });
     c.thumbs = c.photos.map((url, i) => {
-      const name = `${c.id}-${i}`;
+      const name = `${c.id}/${i}`;
       const sizes = i === 0 ? [480, 960, 1280] : [480, 1280];
       sizes.forEach((w) => keep.add(`${name}-${w}.webp`));
       if (!sizes.every((w) => existsSync(`${THUMBS}/${name}-${w}.webp`))) jobs.push({ url, name, sizes });
-      return `stock/${name}-480.webp`;
+      return `images/cars/${name}-480.webp`;
     });
   }
   // a few downloads at a time
@@ -93,7 +94,12 @@ async function thumbs(cars) {
     }
   };
   await Promise.all(Array.from({ length: 6 }, worker));
-  for (const f of readdirSync(THUMBS)) if (!keep.has(f)) rmSync(`${THUMBS}/${f}`);
+  // a sold car loses its folder, and photos a car no longer has lose their files
+  for (const dir of readdirSync(THUMBS)) {
+    const all = readdirSync(`${THUMBS}/${dir}`), gone = all.filter((f) => !keep.has(`${dir}/${f}`));
+    if (gone.length === all.length) rmSync(`${THUMBS}/${dir}`, { recursive: true });
+    else for (const f of gone) rmSync(`${THUMBS}/${dir}/${f}`);
+  }
 }
 
 try {

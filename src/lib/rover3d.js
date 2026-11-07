@@ -1,5 +1,5 @@
 /**
- * The Range Rover, live in 3D (public/model/range-rover.glb), in a showroom built here in real geometry (buildShowroom).
+ * The Range Rover, live in 3D (public/models/range-rover.glb), in a showroom built here in real geometry (buildShowroom).
  * This module is the only place three.js is used, and the home page loads it on its own, so no other page pays for it.
  *
  * It keeps no timeline of its own. The home page animates one plain object of numbers (`s`, see rover-shots.js) with
@@ -9,7 +9,7 @@
  * Expensive effects are faked cheaply, because this has to run on a phone:
  *   reflection   the car is drawn a second time upside down, under a floor that is see-through where it is wet
  *   the hall     real boxes, lit by a shader, so it stays sharp and the walls move properly as the camera does. One
- *                equirectangular Blender render (public/hero/hall.webp) is what the paint reflects and what shows through the far end
+ *                equirectangular Blender render (public/models/hall.webp) is what the paint reflects and what shows through the far end
  *   headlights   the LEDs are real emissive parts of the model; the pools of light are painted by the floor's shader
  *                and the beams in the air are additive cones
  *
@@ -590,7 +590,7 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   let doneModel = 0, doneTex = 0;
   const report = () => onProgress(doneModel * 0.78 + Math.min(1, doneTex) * 0.22);
   const load = (file, setup) => new Promise((ok, bad) => new TextureLoader().load(asset(file), (t) => { setup(t); doneTex += 0.5; report(); ok(t); }, undefined, bad));
-  const hallLoad = load('hero/hall.webp', (t) => {
+  const hallLoad = load('models/hall.webp', (t) => {
     t.colorSpace = SRGBColorSpace;
     t.wrapS = RepeatWrapping;
     t.minFilter = LinearMipmapLinearFilter;
@@ -603,17 +603,17 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   studio.catch(() => {});
   const [gltf, signGltf, hallTex, surfaceTex, engineGltf, bayGltf] = await Promise.all([
     new Promise((ok, bad) => {
-      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('model/range-rover.glb'), ok,
+      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/range-rover.glb'), ok,
         (e) => { if (e.total) { doneModel = e.loaded / e.total; report(); } }, bad);
     }),
-    new Promise((ok, bad) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('model/sign.glb'), ok, undefined, bad); }),
+    new Promise((ok, bad) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/sign.glb'), ok, undefined, bad); }),
     hallLoad,
-    load('hero/floor.webp', (t) => {
+    load('models/floor.webp', (t) => {
       t.wrapS = t.wrapT = RepeatWrapping;
       t.anisotropy = 8;
     }),
-    withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('model/engine.glb'), ok, undefined, () => ok(null)); }) : null,
-    withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('model/bay.glb'), ok, undefined, () => ok(null)); }) : null,
+    withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/engine.glb'), ok, undefined, () => ok(null)); }) : null,
+    withEngine ? new Promise((ok) => { new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(asset('models/bay.glb'), ok, undefined, () => ok(null)); }) : null,
   ]);
   onProgress(1);
   MeshoptDecoder.useWorkers?.(0); // done with them

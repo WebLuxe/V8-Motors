@@ -11,7 +11,7 @@
  * src/glass.css gives them a plain readable panel on still steel. If the graphics card goes away it falls back to the same.
  */
 import gsap from 'gsap';
-import { modest } from './device.js';
+import { modest, slowLevel, markSlow } from './device.js';
 import { SHAPES } from './shapes.js';
 
 // The compare tray is not here, nor the note on the map: they float over photos and words, and this canvas is behind those
@@ -21,6 +21,7 @@ const PANELS = '.car, .finder, .inv-filters, .garage, .tool, .cmp-scroll, .compa
 const MAX = 24; // the most panels drawn at once, more than a window ever shows
 const TILE = 32; // the window is cut into squares this big (px), and each knows which panels touch it, so most of it asks about none
 const PIXELS = 2.6e6, SHARPEST = 1.25; // never more than this many pixels, and never finer than this on a sharp screen
+const COARSE = 0.6; // how much coarser the glass is drawn on a machine that has struggled with it (see judge)
 const IDLE = 30; // ms between frames when only the steel is drifting, about 30 a second
 const RACERS = ['Coupe', 'Sedan']; // the low, long ones: the tall shapes looked silly flat out
 // each shape comes in these paints, and every car that crosses picks one of the eight at random: body top to bottom, then windows
@@ -237,7 +238,7 @@ let engineDone;
 export const engineReady = new Promise((r) => (engineDone = r));
 export function initGlass() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (modest || !matchMedia('(hover: hover) and (pointer: fine)').matches) { engineDone(); return; }
+  if (modest || slowLevel >= 2 || !matchMedia('(hover: hover) and (pointer: fine)').matches) { engineDone(); return; }
   const canvas = document.createElement('canvas');
   canvas.className = 'steel';
   canvas.setAttribute('aria-hidden', 'true');
@@ -246,7 +247,7 @@ export function initGlass() {
   document.body.prepend(canvas);
 
   let program = null, u = {}, tilesTex = null, parallel = null;
-  let ready = false, stopped = false, quality = 1, force = true;
+  let ready = false, stopped = false, quality = slowLevel ? COARSE : 1, force = true;
   let W = 0, H = 0, gw = 0, gh = 0, tiles = new Uint8Array(0);
 
   /* ---- start, and start again if the graphics card comes back */
@@ -509,21 +510,24 @@ export function initGlass() {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
-  /* ---- can this machine keep up? Judged only while it can be seen. First draw a little coarser, and if that is not enough, stop */
-  let frames = 0, from = lastTick, slow = 0, tickAt = lastTick;
+  /* ---- can this machine keep up? Judged a second at a time while it can be seen, after the page has settled (loading always
+     stutters). Below 45 frames a second the glass is drawn much coarser at once; if it still can't reach 26 (a battery saver holds a
+     healthy machine at 30, so that isn't slow), it stops and the plain look takes over. Either verdict is remembered (markSlow), so
+     the next page starts where this one ended instead of stuttering all over again */
+  let frames = 0, from = lastTick, tickAt = lastTick, settleUntil = 0, lows = 0;
   const judge = (now) => {
     const gap = now - tickAt;
     tickAt = now;
-    if (gap > 400) { frames = 0; from = now; return; }
+    if (gap > 400 || html.classList.contains('leaving')) { frames = 0; from = now; return; } // a hidden tab, or the page changing
+    if (!settleUntil) settleUntil = now + 1200;
+    if (now < settleUntil) { frames = 0; from = now; return; }
     frames++;
-    if (now - from < 2000) return;
-    slow = (frames * 1000) / (now - from) < 24 ? slow + 1 : 0; // a battery saver holds a healthy machine at 30, so that isn't slow
+    if (now - from < 1000) return;
+    const fps = (frames * 1000) / (now - from);
     frames = 0; from = now;
-    if (slow < 2) return;
-    slow = 0;
-    if (quality < 0.6) { giveUp(); return; }
-    quality *= 0.75;
-    size();
+    if (quality > COARSE && fps < 45) { quality = COARSE; size(); markSlow(1); lows = 0; settleUntil = now + 600; return; }
+    lows = fps < 26 ? lows + 1 : 0;
+    if (lows >= 2) { markSlow(2); html.classList.add('lite'); giveUp(); } // and the rest of the page goes light with it (end of src/phone.css)
   };
 
   /* ---- every tick of the clock the page scrolls by, after it has scrolled */
@@ -532,6 +536,7 @@ export function initGlass() {
       if (program && !gl.isContextLost() && (!parallel || gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR))) finish();
       return;
     }
+    if (html.classList.contains('lite')) { giveUp(); return; } // light mode came on (watchSpeed in src/lib/layout.js): the plain look
     if (again) { again = false; scan(); }
     // stopped altogether: a hidden tab, the film, the 3D car filling the window, or the curtain closing over the page
     if (document.hidden || html.classList.contains('play-intro') || html.classList.contains('hero-cover') || html.classList.contains('leaving')) { stopped = true; return; }

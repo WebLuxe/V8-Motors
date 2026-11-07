@@ -30,12 +30,12 @@ export function shell({ head, page, body, script, P = '', bodyClass = '' }) {
 
 // ---------------------------------------------------------------- share pictures
 // WhatsApp and Facebook show a 1200 x 630 picture with a shared link, so every car gets its own: its first photo, cropped to fit,
-// with a small V8 Motors badge in the corner. Made once per car and kept until its photo changes (public/share/<id>.jpg)
-const SHARE = 'public/share';
+// with a small V8 Motors badge in the corner. Made once per car and kept until its photo changes (public/images/share/<id>.jpg)
+const SHARE = 'public/images/share';
 mkdirSync(SHARE, { recursive: true });
 const keep = new Set(CARS.map((c) => `${c.id}.jpg`));
 for (const f of readdirSync(SHARE)) if (!keep.has(f)) rmSync(`${SHARE}/${f}`); // cars that have been sold
-const mark = await sharp('public/brand/v8-mark.png').resize({ height: 46 }).png().toBuffer();
+const mark = await sharp('public/images/brand/v8-mark.png').resize({ height: 46 }).png().toBuffer();
 const markW = (await sharp(mark).metadata()).width;
 const badge = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
   <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient></defs>
@@ -45,7 +45,7 @@ const badge = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" 
 </svg>`);
 let made = 0;
 for (const c of CARS) {
-  const src = ['1280', '960'].map((w) => `public/stock/${c.id}-0-${w}.webp`).find(existsSync);
+  const src = ['1280', '960'].map((w) => `public/images/cars/${c.id}/0-${w}.webp`).find(existsSync);
   const out = `${SHARE}/${c.id}.jpg`;
   if (!src || (existsSync(out) && statSync(out).mtimeMs > statSync(src).mtimeMs)) continue;
   await sharp(src).resize(1200, 630, { fit: 'cover', position: 'attention' })
@@ -66,7 +66,7 @@ for (const c of CARS) {
     title: `${name} for sale, ${rs(c.price)} | V8 Motors Mauritius`,
     desc: `${name}, ${c.trim}, ${c.gearbox.toLowerCase()}${c.km != null ? `, ${km(c.km)}` : ''}. ${rs(c.price)} at V8 Motors, 59B Royal Road, Coromandel. Part-exchange and leasing available.`,
     path: `cars/${c.id}.html`,
-    image: existsSync(`${SHARE}/${c.id}.jpg`) ? `${SITE}share/${c.id}.jpg` : c.images[0],
+    image: existsSync(`${SHARE}/${c.id}.jpg`) ? `${SITE}images/share/${c.id}.jpg` : c.images[0],
     jsonld: [carJsonLd(c), breadcrumbJsonLd([['Home', ''], ['Catalogue', 'inventory.html'], [name, `cars/${c.id}.html`]])],
     P: '../',
   });

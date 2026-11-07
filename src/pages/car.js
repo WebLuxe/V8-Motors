@@ -12,7 +12,6 @@ wireCardActions();
 // The page is pre-rendered; this script only adds behaviour.
 const c = byId($('[data-car]')?.dataset.car);
 if (c) {
-  store.pushRecent(c.id);
   setupGallery();
   setupVideo();
   setupFinance();

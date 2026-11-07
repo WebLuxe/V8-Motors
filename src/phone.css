@@ -19,16 +19,44 @@
     .sellband { flex: none; align-items: flex-start; min-height: 100vh; min-height: 100svh; padding-block: calc(var(--nav-h) + 14svh) var(--s6); }
   }
 
-  /* a phone held sideways is only about 390px tall: the menu bar scrolls away with the page instead of staying, the bottom bar
-     keeps its icons but drops the words, and the compare tray sits lower and slimmer, so the cars get the screen */
+  /* a phone held sideways is only about 390px tall: the menu bar scrolls away with the page instead of staying, and the compare tray sits lower and slimmer, so the cars get the screen */
   @media (orientation: landscape) and (max-height: 500px) and (max-width: 999px) {
     body:not(.page-home) .nav { position: absolute; }
-    .tab { min-height: 44px; }
-    .tab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     .tray { bottom: calc(var(--tab-h) + 6px); }
     .tray-inner { padding-block: 4px; }
     /* the car photo fits between the menu bar and the price bar, whole, centred */
     .car-page .gallery-main { align-self: center; width: auto; max-width: 100%; height: calc(100svh - var(--nav-h) - 84px); aspect-ratio: 4 / 3; margin-inline: auto; border-radius: 12px; }
     .car-page .gallery-main img { position: absolute; inset: 0; height: 100%; }
   }
+
+  /* ---- the menu on phones: three lines at the top right of the menu bar, and the menu drops down from the top */
+  .nav-burger { display: none; }
+  @media (max-width: 899px) {
+    .tabbar { display: none !important; }
+    .nav-burger { display: grid; align-content: center; justify-items: end; gap: 5px; margin-left: auto; width: var(--tap); height: var(--tap); margin-right: -.5rem; padding-right: .5rem; color: inherit; border-radius: 12px; }
+    .nav-burger span { display: block; width: 22px; height: 2px; border-radius: 2px; background: currentColor; transition: width .3s var(--ease); }
+    .nav-burger span:nth-child(3) { width: 14px; }
+    .nav-burger:active span:nth-child(3) { width: 22px; }
+    .sheet { top: 0; bottom: auto; display: flex; flex-direction: column; max-height: min(88svh, 46rem);
+      padding: calc(var(--s3) + env(safe-area-inset-top)) var(--s5) var(--s1); border-radius: 0 0 var(--r-xl) var(--r-xl);
+      transform: translateY(-105%); box-shadow: 0 24px 60px -20px rgb(14 14 13 / .55); }
+    .sheet.is-open { transform: translateY(0); }
+    .sheet-grab { order: 9; flex: none; margin-top: var(--s2); cursor: grab; }
+    .sheet-grab span { background: rgb(18 19 23 / .22); }
+  }
 }
+
+/* ---------------------------------------------------------------- light mode
+   A device that has shown it can't keep up (a weak or busy computer, a browser drawing without its graphics chip, an old phone:
+   see src/lib/device.js and watchSpeed in src/lib/layout.js) gets the same pages, same layout and colours, with the costly
+   effects taken off: no blur behind glass, no big soft shadows, no rims drawn with masks. Panels carry a little more white and a
+   hairline edge instead, so they still read as panels. Outside the layers on purpose, so it wins over everything above. */
+html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important; }
+html.lite :is(.car, .finder, .inv-filters, .calc, .wizard, .estimate, .finance-intro, .fin-mini-box, .panel, .garage, .form-done, .tray-inner, .contact-side, .spec, .tool, .acc) {
+  background-color: rgb(255 255 255 / .86) !important; outline: 1px solid rgb(18 20 24 / .1); outline-offset: -1px; }
+html.lite :is(.car, .finder, .calc, .wizard, .estimate, .finance-intro, .fin-mini-box, .garage, .contact-side, .spec, .tool, .acc)::before,
+html.lite .inv-filters::after { display: none !important; }
+html.lite .sheet { background: rgb(243 245 247) !important; }
+/* form boxes drew their edges with shadows: here they get a plain hairline, so an empty box still shows where to type */
+html.lite :is(input:not([type="range"], [type="checkbox"], [type="radio"], [type="file"], [type="hidden"]), select, textarea) { outline: 1px solid rgb(18 20 24 / .2); outline-offset: -1px; }
+html.lite :is(input, select, textarea):focus-visible { outline: 2px solid #121317; outline-offset: 1px; }

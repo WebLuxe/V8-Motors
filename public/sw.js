@@ -1,7 +1,7 @@
 // Keeps the site's files close to the visitor. Pages always ask the network first, so a new version shows up straight away and an
 // old copy only serves when there is no connection. Files with a fingerprint in their name never change once
 // published, so they come straight from here. Stock photos, models and the intro show at once and refresh quietly behind the scenes.
-const VERSION = 'v8motors-1';
+const VERSION = 'v8motors-2';
 const ONLY_OURS = /^v8motors-/; // this address is shared with other sites, so only ever clear our own caches
 const cache = () => caches.open(VERSION);
 
@@ -24,11 +24,11 @@ addEventListener('fetch', (e) => {
     e.respondWith(fetch(req, { cache: 'no-cache' }).then((res) => keep(req, res)).catch(async () => (await caches.match(req, { ignoreSearch: true })) || (url.pathname.includes('/cars/') ? null : await caches.match(new URL('./', location.href).href)) || Response.error()));
     return;
   }
-  if (/\/(assets|model|gate|brand)\//.test(url.pathname) || /\.woff2$/.test(url.pathname)) {
+  if (/\/(assets|models|images\/gate|images\/brand|media\/hero)\//.test(url.pathname) || /\.woff2$/.test(url.pathname)) {
     e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => keep(req, res))));
     return;
   }
-  if (/\/stock\//.test(url.pathname)) {
+  if (/\/images\/cars\//.test(url.pathname)) {
     e.respondWith(caches.match(req).then((hit) => {
       const fresh = fetch(req).then((res) => keep(req, res)).catch(() => hit);
       if (hit) e.waitUntil(fresh);

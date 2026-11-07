@@ -279,14 +279,6 @@ window.addEventListener('store:change', () => { renderTray(); if (form.saved.che
 wireCardActions();
 renderTray();
 
-// ---------------------------------------------------------------- recently viewed
-const recent = store.recent().map(byId).filter(Boolean);
-if (recent.length) {
-  $('[data-recent-wrap]').hidden = false;
-  $('[data-recent]').innerHTML = recent.map((c) => `<li><a href="cars/${c.id}.html" class="mini">
-    <img src="${thumb(c)}" width="480" height="317" alt="" loading="lazy" /><span class="mini-name">${carName(c)}</span><span class="mini-price tabular-nums">${rs(c.price)}</span></a></li>`).join('');
-}
-
 // ---------------------------------------------------------------- go
 applyUrl();
 render({ animate: false });

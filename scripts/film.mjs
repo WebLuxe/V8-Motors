@@ -1,4 +1,4 @@
-// Renders the intro into public/intro/film.mp4 for phones, from the same 3D scene the site draws live.
+// Renders the intro into public/media/intro/film.mp4 for phones, from the same 3D scene the site draws live.
 //
 //   vite build --mode dbg --outDir dist-dbg, serve it on PORT, then:
 //   PLAYWRIGHT=<path to playwright-core> OUT=<a work folder> PORT=4178 node scripts/film.mjs 4.5 12.9
@@ -15,13 +15,15 @@
 //   VF="tmix=frames=2:weights=1 1,select=not(mod(n\,4)),setpts=N/30/TB,scale=1080:1800:flags=lanczos,format=yuv420p,tpad=stop_mode=clone:stop_duration=1.35"
 //   ffmpeg -start_number 540 -framerate 120 -i frames/%05d.jpg -i audio.m4a -vf "$VF" -c:v libx264 -preset veryslow -crf 24 -profile:v high -level 4.2 -g 120 -keyint_min 30 -x264-params aq-mode=3:aq-strength=1.0 -r 30 -c:a copy -shortest -movflags +faststart film.mp4
 //   ffmpeg -start_number 540 -framerate 120 -i frames/%05d.jpg -i audio.m4a -vf "$VF" -c:v libx265 -preset slow -crf 26 -tag:v hvc1 -x265-params "log-level=error:keyint=120:min-keyint=30:aq-mode=3" -r 30 -c:a copy -shortest -movflags +faststart film-hevc.mp4
-// Copy both to public/intro/. If the logo's place changes, this script prints the new FILM.mark for src/pages/home.js.
+// Copy both to public/media/intro/. If the logo's place changes, this script prints the new FILM.mark for src/pages/home.js.
 // Anything that changes the intro (the car, the bay, the timeline in home.js) needs the film rendered again.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT + '/index.mjs').href);
 
-const OUT = process.env.OUT, PORT = process.env.PORT || 4178, FPS = 120, W = 540, H = 900, SCALE = +(process.env.SCALE || 4);
+const OUT = process.env.OUT, PORT = process.env.PORT || 4178, FPS = 120, SCALE = +(process.env.SCALE || 4);
+// the shape of the film: upright for phones (540 x 900, the default) or wide for computers and tablets (W=960 H=540)
+const W = +(process.env.W || 540), H = +(process.env.H || 900);
 const from = +(process.argv[2] || 0), to = +(process.argv[3] || 12.9);
 mkdirSync(`${OUT}/frames`, { recursive: true });
 

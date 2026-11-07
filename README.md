@@ -22,7 +22,7 @@ The cars come from the dealership's own stock API, the same one behind v8motors.
 
 - fetches every car marked for sale, tidies the names (`NISSAN NP 300` becomes `Nissan NP300`, `Range Rover` becomes `Land Rover Range Rover`) and fixes vans and MPVs filed as "Other";
 - saves a snapshot to `src/inventory.json` (committed, so a build still works if the API is down);
-- makes small WebP thumbnails of every photo in `public/stock/` (not committed; re-created on the next sync). Full-size photos load from the dealer's photo server on each car page.
+- makes WebP copies of every photo in `public/images/cars/<car>/`, one folder per car (not committed; re-created on the next sync, and a sold car's folder is removed). Full-size photos load from the dealer's photo server on each car page.
 
 So to publish new stock: add it in the dealership's admin as usual, then run `npm run deploy`.
 
@@ -56,9 +56,9 @@ The dealer's photo server takes about two seconds per photo, so the gallery neve
 
 ### Navigation
 
-- **Phones:** a floating dock at the bottom (Home, Catalogue, Call, Menu), within reach of the thumb. A pill sits behind the current place and glides to the next one when you change page. Menu opens a bottom sheet (never a full-screen popup) with every page, the live open/closed status and one-tap Call, WhatsApp, Email and Directions. Drag it down, tap outside or press Escape to close.
+- **Phones:** nothing fixed at the bottom of the screen. Three lines at the top right open the menu, which drops from the top (never a full-screen popup) with every page, the live open/closed status and one-tap Call, WhatsApp, Email and Directions. Drag it up, tap outside or press Escape to close. The home page plays a filmed loop of the Range Rover instead of drawing it live, so it is smooth on every phone.
 - **Wide screens:** one underline glides under whichever menu link you point at, and back to the current page.
-- **Page changes:** the curtain, in every browser: red and silver layers sweep in from both sides, meet on the logo and the name of the page (or the car), and open on the next page. The dock pill glides to the tapped tab as they close.
+- **Page changes:** the curtain, in every browser: red and silver layers sweep in from both sides, meet on the logo and the name of the page (or the car), and open on the next page.
 - **Footer:** every page closes on the same one: the pages, the address and email, all four phone numbers, and the small print. On the home page the Saturday red fades into it.
 
 ### Home page
@@ -102,14 +102,32 @@ The dealer's photo server takes about two seconds per photo, so the gallery neve
 
 The sell form validates on the page, then opens WhatsApp to V8 Motors with the message already written. The visitor presses send in their own app. Nothing is stored on a server.
 
+## Folders
+
+```
+*.html                 the pages (they stay at the top so the web addresses stay short)
+src/                   code and styles: pages/ (one file per page), lib/ (shared), fonts/, inventory.json, dealer.js
+scripts/               build tools: stock sync, car pages, deploy, the intro film and the car loop
+public/                copied to the site as it is
+  images/brand/        the V8 Motors logo
+  images/gate/         the engine start button
+  images/hero/         the still photo of the Range Rover
+  images/cars/<car>/   each car's photos (made by the stock sync)
+  images/share/        the picture each car shows when its link is shared
+  media/intro/         the intro film for phones and the engine sound
+  media/hero/          the filmed loop of the car that phones and tablets play
+  models/              the 3D car, engine, bay and sign, and the showroom textures (computers only)
+  sw.js, icons, site.webmanifest
+```
+
 ## How it is built
 
 - `src/dealer.js`: dealer details (address, phones, hours, leasing partner, example rate). `src/data.js`: the stock from `src/inventory.json`, plus helpers.
-- `src/lib/templates.js`: HTML templates shared by the build and the browser (nav, dock, menu sheet, footer, cards, car pages, meta tags, structured data).
-- `src/lib/layout.js`: what every page shares (transitions, nav underline, dock, menu sheet, scrolling, toasts, forms). `src/lib/glass.js`: the steel, the racing cars and the liquid glass, in one pass. `src/lib/shapes.js`: the 2D car drawings. `src/lib/fx.js`: reveals, count-ups, the rev bar, photo swipes. `src/lib/odo.js`: the odometer numbers. `src/lib/hours.js`: opening hours and the Saturday countdown.
+- `src/lib/templates.js`: HTML templates shared by the build and the browser (nav and its menu button, menu sheet, footer, cards, car pages, meta tags, structured data).
+- `src/lib/layout.js`: what every page shares (transitions, nav underline, menu sheet, scrolling, toasts, forms). `src/lib/glass.js`: the steel, the racing cars and the liquid glass, in one pass. `src/lib/shapes.js`: the 2D car drawings. `src/lib/fx.js`: reveals, count-ups, the rev bar, photo swipes. `src/lib/odo.js`: the odometer numbers. `src/lib/hours.js`: opening hours and the Saturday countdown.
 - `vite.config.js`: a small plugin fills `<!--@...-->` placeholders, so every page ships complete HTML.
 - `scripts/prerender.mjs`: writes `cars/*.html`, `public/sitemap.xml`, `public/robots.txt` and `public/llms.txt` (generated, not committed).
-- `scripts/make-intro-lights.mjs`: draws the intro's light signature for the home page photo.
+- `scripts/film.mjs`: renders the phone intro film. `scripts/hero-loop.mjs`: renders the looping car video phones and tablets play instead of the live 3D car.
 - `src/site.css`: the base styles. `src/flagship.css`: the current design layer, loaded after it. `src/pages/*.js`: behaviour for each page.
 
 ## Still needs the dealer

@@ -5,17 +5,39 @@ import { wireCardActions } from '../lib/card.js';
 import { arrive } from '../lib/fx.js';
 import { saturdayDeals } from '../lib/hours.js';
 import { DARK, HERO } from '../lib/rover-shots.js';
+import { slowLevel, markSlow } from '../lib/device.js';
 
-const ENGINE = new URL('intro/engine.mp3', document.baseURI).href;
+const ENGINE = new URL('media/intro/engine.mp3', document.baseURI).href;
 const NAVS = ['[data-nav]', '.tabbar'];
 const GAIN = 0.8; // playback level (the recording itself is mastered quietly)
 /* The intro opens on the first flash of the high beams: everything before it in the film below is skipped, the sound with it.
    Its numbers stay in the time of the whole film, so CUT is the only thing that says where it starts. */
 const CUT = 4.5;
-/* Phones watch the intro as a film: nothing can be touched while it runs, so nothing is lost, and every phone gets the same
-   sharp picture instead of what its graphics chip can manage. It was rendered from this same scene by scripts/film.mjs, starting
-   at CUT, and hands over to the live 3D car just before the camera swings round to the hero. mark: where the logo forms in the picture. */
-const FILM = { src: 'intro/film.mp4', small: 'intro/film-hevc.mp4', hand: 12.5, w: 540, h: 900, mark: { x: 270, y: 368.5, w: 260 } };
+/* Every device that doesn't draw the 3D car live watches the intro as a film: phones, tablets, touch-screen laptops, and computers
+   without a graphics chip or that have struggled before. Nothing can be touched while it runs, so nothing is lost, and they all get
+   the same sharp picture with the sound, never a black screen. Both films were rendered from this same scene by scripts/film.mjs,
+   from CUT to the end, so they finish on the car's hero pose, where the filmed loop of the car (below) takes over.
+   Upright for an upright screen, wide for the rest. mark: where the logo forms in the picture. */
+const FILMS = {
+  tall: { src: 'media/intro/film.mp4', small: 'media/intro/film-hevc.mp4', w: 420, h: 910, mark: { x: 210.5, y: 372.9, w: 263 } },
+  wide: { src: 'media/intro/film-wide.mp4', small: 'media/intro/film-wide-hevc.mp4', w: 960, h: 540, mark: { x: 480, y: 195.1, w: 240 } },
+};
+const FILM = innerHeight > innerWidth ? FILMS.tall : FILMS.wide;
+
+/* The same devices don't draw the car live afterwards either: they play a short filmed loop of it (scripts/hero-loop.mjs), about
+   1 MB, which every device plays smoothly and which costs far less to download than the 3D car. */
+const LOOP = (k, hevc) => `media/hero/loop-${k}${hevc ? '-hevc' : ''}.mp4`;
+const touchOnly = !matchMedia('(hover: hover) and (pointer: fine)').matches;
+/** Can this computer draw the 3D car on a real graphics chip? Asked once, the way src/lib/rover3d.js would find out later. */
+const realGpu = (() => {
+  try {
+    const c = document.createElement('canvas'), gl = c.getContext('webgl2', { failIfMajorPerformanceCaveat: true });
+    if (!gl) return false;
+    const info = gl.getExtension('WEBGL_debug_renderer_info'), chip = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return !/swiftshader|llvmpipe|software|basic render/i.test(chip);
+  } catch { return false; }
+})();
 
 const media = $('[data-hero-media]');
 const canvas = $('[data-hero-canvas]');
@@ -41,10 +63,15 @@ if (playIntro) {
    With reduced motion, data saver, no WebGL or a failed download, the still of the same car stays on screen. */
 const s = { ...(playIntro ? DARK : HERO) };
 if (import.meta.env.MODE === 'dbg') { window.__s = s; window.__gsap = gsap; }
-const useFilm = playIntro && innerWidth < 700 && innerHeight > innerWidth && !reduced && !navigator.connection?.saveData && !(import.meta.env.MODE === 'dbg' && window.__capture);
+const capture = import.meta.env.MODE === 'dbg' && !!window.__capture; // rendering the films themselves: always the live car
+const moving3d = !reduced && !navigator.connection?.saveData; // reduced motion and data saver keep the still photo
+// the live 3D car: a computer with a mouse or trackpad, a real graphics chip, and no struggles remembered (src/lib/device.js)
+const live3d = moving3d && (capture || (!touchOnly && realGpu && slowLevel < 1));
+const useFilm = playIntro && moving3d && !live3d;
+const useLoop = moving3d && !live3d;
+const wantStage = live3d;
 let stage = null, tooSlow = false, modelDone = 0, onModel = () => {};
-const wantStage = !reduced && !navigator.connection?.saveData;
-// a phone fetches its film first: that has to play without a pause, and the 3D car isn't needed until it ends
+// the film is fetched first: it has to play without a pause, and the filmed loop of the car isn't needed until it ends
 let filmFetched = () => {};
 const filmFirst = useFilm ? new Promise((done) => { filmFetched = done; setTimeout(done, 20000); }) : null;
 const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirst).then(() => import('../lib/rover3d.js'))
@@ -54,13 +81,15 @@ const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirs
     withEngine: playIntro && !useFilm,
     onTap: () => flashLights(0),
     onSign: signBlink,
-    onTooSlow: () => { // this machine can't run the car: the photo takes over and the page carries on
+    onTooSlow: () => { // this machine can't run the car: the filmed car takes over (the photo until it plays), and that is remembered
       stage = null;
       tooSlow = true;
       moving?.kill();
+      markSlow(1);
       document.documentElement.classList.remove('has-3d');
       $('[data-hero-moves]')?.setAttribute('hidden', '');
       $('[data-hero-hint]')?.setAttribute('hidden', '');
+      if (!useLoop && !reduced) heroLoop();
     },
   }))
   .then((st) => {
@@ -72,6 +101,43 @@ const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirs
   })
   .catch((e) => { console.warn('3D car unavailable, showing the still', e); document.documentElement.classList.remove('has-3d'); modelDone = 1; onModel(1); return null; });
 if (!wantStage) { modelDone = 1; document.documentElement.classList.remove('has-3d'); }
+// the loop comes in once the film (if there is one) has arrived, so the two never fight over a slow connection
+const loop = useLoop ? Promise.resolve(filmFirst).then(() => heroLoop({ hold: useFilm })) : Promise.resolve(null);
+
+/** The filmed car: upright or sideways to suit the screen, in the smaller format where the device plays it. It fades in over the
+    still photo once it is really playing, and rests while it is scrolled out of sight. Held (not playing) while the intro film
+    runs on top of it, so the device never decodes two films at once: release() starts it, from its first frame, the hero pose the
+    film ends on, and shows it at once so the film can fade straight into it. */
+function heroLoop({ hold = false } = {}) {
+  let held = hold;
+  const v = document.createElement('video');
+  v.className = 'hero-loop';
+  v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; v.disablePictureInPicture = true;
+  for (const a of ['muted', 'playsinline', 'loop']) v.setAttribute(a, '');
+  v.setAttribute('aria-hidden', 'true');
+  const hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably';
+  const pick = () => {
+    const src = new URL(LOOP(innerHeight > innerWidth ? 'portrait' : 'landscape', hevc), document.baseURI).href;
+    if (v.src !== src) { v.src = src; if (!held) v.play().catch(() => {}); }
+  };
+  v.addEventListener('playing', () => v.classList.add('is-on'), { once: true });
+  v.addEventListener('error', () => { if (hevc && v.src.includes('-hevc')) v.src = v.src.replace('-hevc', ''); }); // said it could, couldn't
+  canvas.after(v);
+  pick();
+  matchMedia('(orientation: portrait)').addEventListener('change', pick);
+  let seen = true;
+  new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen && !held) v.play().catch(() => {}); else v.pause(); }).observe(media);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && seen && !held) v.play().catch(() => {}); });
+  v.release = () => {
+    if (!held) return;
+    held = false;
+    v.style.transition = 'none';
+    v.classList.add('is-on');
+    v.currentTime = 0;
+    v.play().catch(() => {});
+  };
+  return v;
+}
 
 setupFinder();
 keepPlace();
@@ -106,7 +172,7 @@ function keepPlace() {
 
 /* ================================================================== intro
    Browsers only allow sound after a tap, so the intro opens on the car's start button, on the silver page.
-   Pressing it plays a real, healthy V8 (public/intro/engine.mp3: a starter crank, then a V8 catching,
+   Pressing it plays a real, healthy V8 (public/media/intro/engine.mp3: a starter crank, then a V8 catching,
    idling smoothly and revving, CC0 recordings from Freesound). The picture runs on the audio clock, and the
    body's roll and the camera shake follow the recording's loudness frame by frame. It starts at CUT; what comes before that
    in the timeline only sets the scene up:
@@ -150,7 +216,7 @@ function prepareSound(onProgress = () => {}) {
 
 function startLoader(gate) {
   // weights: what you'd wait longest for weighs most
-  // a phone's film plays as it arrives, so the button doesn't wait for the 3D car, which only comes in at the very end
+  // a film plays as it arrives, so the button only waits until it can play right through
   const parts = useFilm ? { fonts: [0, 0.1], audio: [0, 0.9] } : { model: [0, 0.7], fonts: [0, 0.05], audio: [0, 0.25] };
   let target = 0, shown = 0, raf = 0, ready = false;
   const set = (k, v) => { if (!parts[k]) return; parts[k][0] = Math.max(parts[k][0], Math.min(1, v)); target = Object.values(parts).reduce((a, [x, w]) => a + x * w, 0); };
@@ -281,11 +347,13 @@ async function runIntro() {
 
   if (choice === 'skip') {
     loader.stop();
-    await gsap.to(gate, { opacity: 0, scale: 0.96, duration: 0.3, ease: 'power2.in' });
+    // the browser's own animations keep time even on a struggling device, where the page's clock slows right down
+    await gate.animate([{ opacity: 1, scale: 1 }, { opacity: 0, scale: 0.96 }], { duration: 300, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
     gate.remove();
     audio?.ctx.close();
     film?.remove();
     filmFetched();
+    loop.then((v) => v?.release()); // skipped before the film: the filmed car straight away
     if (stage) gsap.set(dark, { opacity: 0 });
     stageReady.then((st) => { st?.dropEngine(); st?.dropBay(); }); // skipped: neither will be seen
     await gsap.timeline()
@@ -303,12 +371,26 @@ async function runIntro() {
   const { buffer, env } = await needs;
   loader.stop();
   // the button gives way to the film as it begins, rather than the film waiting for the button to go
-  gsap.to(gate, { opacity: 0, scale: 1.03, duration: 0.45, ease: 'power2.out', onComplete: () => gate.remove() });
+  // (the browser's own animation, as above: on a struggling device the button must still be gone in under half a second)
+  gate.animate([{ opacity: 1, scale: 1 }, { opacity: 0, scale: 1.03 }], { duration: 450, easing: 'cubic-bezier(.2, .8, .2, 1)', fill: 'forwards' }).finished.then(() => gate.remove(), () => gate.remove());
   const withSound = choice === 'sound' && (buffer || film);
   if (withSound) dispatchEvent(new Event('v8:sound-on'));
   if (!withSound) audio?.ctx.close();
   const full = stage || film; // the whole film, in 3D or as a video
-  if (full) gsap.set(dark, { opacity: 0 }); // the scene is its own darkness
+  if (!full) {
+    // nothing to show it with after all (the 3D car failed to start): never a black screen with only the sound. The page comes up
+    // at once, with the filmed car where it can play
+    audio?.ctx.close();
+    if (!useLoop && moving3d) heroLoop();
+    await gsap.timeline()
+      .to(dark, { opacity: 0, duration: 0.9, ease: 'power2.inOut' }, 0)
+      .to(bars, { scaleY: 0, duration: 0.8, ease: 'expo.inOut' }, 0)
+      .to(NAVS, { opacity: 1, duration: 0.6 }, 0.4)
+      .add(heroIn, 0.45);
+    finishIntro();
+    return;
+  }
+  gsap.set(dark, { opacity: 0 }); // the scene is its own darkness
   if (film) { s.off = true; gsap.set(bars, { display: 'none' }); } // the 3D car rests until the film hands over to it, and the film fills the screen from its first frame
 
   // where the badge sits: in the sky above the car, then it flies into the menu bar
@@ -472,7 +554,9 @@ async function runIntro() {
     stageReady.then(() => {
       s.off = false;
       stage?.draw(true);
-      gsap.to(film, { opacity: 0, duration: 0.36, ease: 'sine.inOut' }); // it plays on unseen: it is the clock and the sound
+      // the filmed loop starts where the film ends, on the car's hero pose
+      if (useLoop) loop.then((v) => v?.release());
+      gsap.to(film, { opacity: 0, duration: useLoop ? 0.6 : 0.36, ease: 'sine.inOut' }); // it plays on unseen: it is the clock and the sound
     });
   };
   const carryOn = () => { if (!document.hidden && film && !film.ended && film.paused && !handed) film.play().catch(() => {}); };
@@ -517,7 +601,7 @@ async function runIntro() {
       let t = Math.max(0, now() - t0) + CUT;
       if (import.meta.env.MODE === 'dbg' && window.__hold !== undefined) t = window.__hold;
       if (film && (film.ended || t >= tl.duration() - 0.04)) t = tl.duration();
-      if (film && t >= FILM.hand) handOver();
+      if (film && t >= tl.duration() - 0.3) handOver(); // the filmed loop takes over at the very end, on the hero pose
       tl.time(Math.min(t, tl.duration()));
       if (!performance.getEntriesByName('v8:intro').length) performance.mark('v8:intro');
       react(t);

@@ -47,7 +47,7 @@ export const ICON = {
 };
 
 /* ------------------------------------------------------------------ brand mark: the dealership's own V8 logo */
-export const markSVG = (cls = 'mark', P = '') => `<img class="${cls}" src="${P}brand/v8-mark-sm.png" width="182" height="172" alt="" decoding="async">`;
+export const markSVG = (cls = 'mark', P = '') => `<img class="${cls}" src="${P}images/brand/v8-mark-sm.png" width="182" height="172" alt="" decoding="async">`;
 
 /* ------------------------------------------------------------------ body shapes */
 // Painted as cartoons by src/glass.css: flat paint and an ink outline.
@@ -95,7 +95,6 @@ export function carCard(c, P = '', { eager = false, sizes = '(min-width: 1000px)
       <div class="car-foot">
         <div class="car-lines">
           <p class="car-line tabular-nums">${esc(specLine(c))}</p>
-          <p class="car-monthly tabular-nums">or about ${rs(monthly(c.price))} a month</p>
         </div>
         <button type="button" class="car-compare" data-compare="${c.id}" aria-pressed="false" aria-label="Compare the ${esc(carName(c))}">${ICON.scales}<span>Compare</span></button>
       </div>
@@ -128,28 +127,20 @@ export function navHTML(page, P = '') {
       ${NAV_PAGES.map((p) => `<a href="${P}${p.href}"${p.key === page ? ' aria-current="page"' : ''}>${p.label}</a>`).join('')}
       <span class="nav-ink" data-nav-ink aria-hidden="true"></span>
     </nav>
+    <button type="button" class="nav-burger" data-menu-open aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-sheet" aria-label="Menu"><span></span><span></span><span></span></button>
   </header>`;
 }
 
 const MAPS_DIR = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(DEALER.mapsQuery)}`;
 const WA = (text = 'Hello V8 Motors, ') => `https://wa.me/${DEALER.whatsapp}?text=${encodeURIComponent(text)}`;
 
-/** Bottom dock on phones: the main actions sit where the thumb is. A pill glides to the current tab
-    (and between pages, with the page transition); Menu opens a bottom sheet with everything else. */
+/** On phones the menu bar's three lines open the menu (see menuSheetHTML). This puts the menu itself on the page. */
 export function mobileBarHTML(page, P = '') {
-  const tab = (key, href, icon, label) => `<a href="${href}" class="tab"${key === page ? ' aria-current="page"' : ''}>${icon}<span>${label}</span></a>`;
-  return `<nav class="tabbar" aria-label="Quick links" data-tabbar>
-    <span class="tab-pill" data-tab-pill aria-hidden="true"></span>
-    ${tab('home', `${P}./`, markSVG('mark tab-mark', P), 'Home')}
-    ${tab('inventory', `${P}inventory.html`, ICON.car, 'Catalogue')}
-    <a href="${DEALER.phoneHref}" class="tab tab--call">${ICON.phone}<span>Call</span></a>
-    <button type="button" class="tab" data-menu-open aria-haspopup="dialog" aria-expanded="false" aria-controls="menu-sheet"${['sell', 'finance', 'contact', 'compare'].includes(page) ? ' aria-current="page"' : ''}>${ICON.menu}<span>Menu</span></button>
-  </nav>
-  ${menuSheetHTML(page, P)}`;
+  return menuSheetHTML(page, P);
 }
 
-/** The menu as a bottom sheet (never a full-screen takeover): every page, the quickest ways to reach
-    the showroom, and whether it's open right now. Drag it down, tap outside or press Escape to close. */
+/** The menu as a sheet that drops from the top on phones (never a full-screen takeover): every page, the quickest ways to reach
+    the showroom, and whether it's open right now. Drag it up, tap outside or press Escape to close. */
 export function menuSheetHTML(page, P = '') {
   const link = (key, href, icon, label, meta) => `<a href="${href}" class="sheet-link"${key === page ? ' aria-current="page"' : ''}>${icon}<span><strong>${label}</strong>${meta ? `<small>${meta}</small>` : ''}</span></a>`;
   return `<div class="sheet-scrim" data-menu-scrim hidden></div>
@@ -205,7 +196,7 @@ export function footerHTML(P = '') {
 export function headHTML({ title, desc, path, image, jsonld = [], P = '' }) {
   const url = SITE + path;
   const img = image || `${SITE}og.jpg`;
-  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');addEventListener('pagereveal',function(e){if(e.viewTransition&&d.classList.contains('curtain-in'))e.viewTransition.skipTransition()});
+  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload')sessionStorage.removeItem('v8:compare');if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{var sv=JSON.parse(localStorage.getItem('v8:slow'));if(sv&&Date.now()-sv.at<2592e5&&sv.level>=2)d.classList.add('lite')}catch(e){}try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');addEventListener('pagereveal',function(e){if(e.viewTransition&&d.classList.contains('curtain-in'))e.viewTransition.skipTransition()});
     /* if the page script never runs (offline, blocked), don't leave the intro or hidden content in the way */
     setTimeout(function(){if(!window.__v8){d.classList.remove('play-intro','js');}},9000);}catch(e){}})(document.documentElement)</script>
   <script type="speculationrules">{"prefetch":[{"where":{"and":[{"selector_matches":"a[href]"},{"not":{"selector_matches":"[rel~=noopener],[href^='tel:'],[href^='mailto:'],[href*='://']"}}]},"eagerness":"moderate"}]}</script>
@@ -241,7 +232,7 @@ export function dealerJsonLd() {
     '@id': `${SITE}#dealer`,
     name: 'V8 Motors',
     url: SITE,
-    logo: `${SITE}brand/v8-mark.png`,
+    logo: `${SITE}images/brand/v8-mark.png`,
     image: `${SITE}og.jpg`,
     telephone: '+230' + DEALER.phone.replace(/\s/g, ''),
     email: DEALER.email,
@@ -339,7 +330,6 @@ export function carPageHTML(c, P = '../') {
         <p class="summary-kicker tabular-nums">${esc(carLine(c))}</p>
         <div class="summary-price">
           <p class="summary-amount car-plate${c.status === 'Saturday deal' ? ' car-plate--deal' : ''} tabular-nums" data-price>${rs(c.price)}</p>
-          <p class="summary-monthly tabular-nums">or about <strong>${rs(monthly(c.price))}</strong> a month on lease, 20% down over 5 years</p>
         </div>
         <dl class="specs" aria-label="Specifications">${specs.map(([icon, k, v]) => `<div class="spec">${icon}<dt>${k}</dt><dd class="tabular-nums">${esc(v)}</dd></div>`).join('')}</dl>
         <div class="summary-contact">
@@ -421,9 +411,22 @@ export function hoursHTML() {
     return `<tr><th scope="row">${from === to ? DAYS[from] : `${DAYS[from]} to ${DAYS[to]}`}</th><td class="${h ? '' : 'closed'} tabular-nums">${h ? `${fmtTime(h[0])} to ${fmtTime(h[1])}` : 'Closed'}</td></tr>`;
   }).join('');
 }
+/** The real marks of WhatsApp, TikTok and YouTube (from Simple Icons), in their own colours, for the links to V8 Motors on each. */
+export const BRAND = {
+  whatsapp: '<svg class="brand-mark brand-mark--wa" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>',
+  tiktok: '<svg class="brand-mark brand-mark--tt" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>',
+  youtube: '<svg class="brand-mark brand-mark--yt" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+};
+
+/** Visit us: the phones, then WhatsApp, TikTok and the About us video side by side, each with its own logo, then email.
+    The About us button opens V8 Motors' video in the page (see src/pages/contact.js). */
 export function reachHTML() {
   return `<div class="reach-row reach-row--phones"><span class="reach-k">Call</span><p class="reach-phones">${DEALER.phones.map(([t, h]) => `<a href="${h}" class="tabular-nums">${t}</a>`).join('')}</p></div>
-    <div class="reach-row"><span class="reach-k">WhatsApp</span><a class="tabular-nums" href="https://wa.me/${DEALER.whatsapp}" rel="noopener">${DEALER.phone}</a></div>
+    <div class="reach-row reach-row--social">
+      <a class="reach-social tabular-nums" href="https://wa.me/${DEALER.whatsapp}" rel="noopener" aria-label="WhatsApp ${DEALER.phone}">${BRAND.whatsapp}<span>${DEALER.phone}</span></a>
+      <a class="reach-social" href="${DEALER.tiktok}" rel="noopener" target="_blank" aria-label="V8 Motors on TikTok, ${DEALER.tiktokName}">${BRAND.tiktok}<span>TikTok</span></a>
+      <button type="button" class="reach-social" data-about-open aria-label="About us: watch V8 Motors' video">${BRAND.youtube}<span>About us</span></button>
+    </div>
     <div class="reach-row"><span class="reach-k">Email</span><a href="mailto:${DEALER.email}">${DEALER.email}</a></div>`;
 }
 

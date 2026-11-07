@@ -10,9 +10,24 @@
     // The intro plays on every fresh load and every refresh, wherever it happened, but not when you arrive from
     // another page on the site (the page transition covers that) or come back with the back button.
     try {
+      // the live 3D car is for a computer with a mouse or trackpad that hasn't struggled with the effects before (src/lib/device.js);
+      // phones, tablets and struggling computers play the filmed car instead, so they don't download any of it
+      var fine = matchMedia('(hover: hover) and (pointer: fine)').matches, slow = false;
+      try { var sv = JSON.parse(localStorage.getItem('v8:slow')); slow = !!(sv && Date.now() - sv.at < 2592e5 && sv.level >= 1); } catch (e) {}
+      var live = fine && !slow && !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData);
+      // and only on a real graphics chip: without one, the computer plays the films instead (the same test as in src/pages/home.js)
+      if (live) try {
+        var gc = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true }), gi = gc && gc.getExtension('WEBGL_debug_renderer_info');
+        live = !!gc && !/swiftshader|llvmpipe|software|basic render/i.test(gi ? String(gc.getParameter(gi.UNMASKED_RENDERER_WEBGL)) : '');
+        if (gc && gc.getExtension('WEBGL_lose_context')) gc.getExtension('WEBGL_lose_context').loseContext();
+      } catch (e) { live = false; }
       // where the 3D car will run, the page keeps its stage dark until the car is ready. The still is framed differently,
       // so showing it first would look like the car jumping when the live one takes over
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData)) document.documentElement.classList.add('has-3d');
+      if (live) document.documentElement.classList.add('has-3d');
+      // what the start button waits for on a computer, asked for at once rather than after the 3D code has arrived
+      if (live && innerWidth >= 700) [['models/range-rover.glb', 'fetch'], ['models/sign.glb', 'fetch'], ['models/hall.webp', 'image'], ['models/floor.webp', 'image']].forEach(function (f) {
+        var l = document.createElement('link'); l.rel = 'preload'; l.href = f[0]; l.as = f[1]; l.crossOrigin = 'anonymous'; document.head.appendChild(l);
+      });
       var nav = performance.getEntriesByType('navigation')[0], type = nav ? nav.type : 'navigate';
       var fromSite = document.referrer && new URL(document.referrer).origin === location.origin;
       var sent = sessionStorage.getItem('v8:restart'); // refreshed on another page, and sent here
@@ -21,9 +36,9 @@
         document.documentElement.classList.add('play-intro');
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
         scrollTo(0, 0);
-        // the intro's own sound and engine, asked for at once on a computer (a phone plays its film instead)
+        // the intro's own sound and engine, asked for at once on a computer (a phone plays its film instead, a tablet only needs the sound)
         // (the two engine models only after the page's own code, which has to arrive first for the button to work)
-        if (innerWidth >= 700) ['intro/engine.mp3', 'model/engine.glb', 'model/bay.glb'].forEach(function (f, i) {
+        if (innerWidth >= 700) (live ? ['media/intro/engine.mp3', 'models/engine.glb', 'models/bay.glb'] : ['media/intro/engine.mp3']).forEach(function (f, i) {
           var l = document.createElement('link'); l.rel = 'preload'; l.as = 'fetch'; l.href = f; l.crossOrigin = 'anonymous'; if (i) l.fetchPriority = 'low'; document.head.appendChild(l);
         });
         // a press that comes before the page's code has arrived is kept, not lost: the intro starts from it when it can
@@ -36,12 +51,9 @@
       if (type === 'back_forward' && sessionStorage.getItem('v8:home-at')) document.documentElement.classList.add('returning');
     } catch (e) {}
   </script>
-  <link rel="preload" as="image" href="gate/ignite-off.webp" fetchpriority="high" />
-  <link rel="preload" as="fetch" href="model/range-rover.glb" crossorigin="anonymous" media="(min-width: 700px)" />
-  <!-- more of what the start button waits for on a computer, asked for at once rather than after the 3D code has arrived -->
-  <link rel="preload" as="fetch" href="model/sign.glb" crossorigin="anonymous" media="(min-width: 700px)" />
-  <link rel="preload" as="image" href="hero/hall.webp" crossorigin="anonymous" media="(min-width: 700px)" />
-  <link rel="preload" as="image" href="hero/floor.webp" crossorigin="anonymous" media="(min-width: 700px)" />
+  <link rel="preload" as="image" href="images/gate/ignite-off.webp" fetchpriority="high" />
+  <link rel="preload" as="image" href="images/gate/ignite-ring.webp" fetchpriority="high" />
+  <link rel="preload" as="image" href="images/gate/ignite-text.webp" fetchpriority="high" />
   <script type="module" src="/src/pages/home.js" blocking="render"></script>
 </head>
 <body class="page-home">
@@ -54,7 +66,7 @@
       <!-- Intro: one continuous shot, drawn live in 3D (src/lib/rover3d.js). The still is the same car, for reduced motion,
            data saver, no WebGL, or while the model loads. -->
       <div class="hero-media" data-hero-media>
-        <img class="hero-img" data-hero-img src="hero/range-rover.webp" width="1600" height="1280" fetchpriority="high" decoding="async" draggable="false"
+        <img class="hero-img" data-hero-img src="images/hero/range-rover.webp" width="1600" height="1280" fetchpriority="high" decoding="async" draggable="false"
           alt="A white Range Rover with a red bow on its bonnet and its headlights on, at night" />
         <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
         <div class="hero-dark" data-hero-dark aria-hidden="true"></div>
@@ -69,7 +81,7 @@
       </div>
       <!-- intro only: letterbox, the V8 badge that flies into the menu bar, and controls while it plays -->
       <div class="bars" data-bars aria-hidden="true"><span></span><span></span></div>
-      <div class="intro-badge" data-badge aria-hidden="true"><img src="brand/v8-mark.png" width="364" height="343" alt="" /></div>
+      <div class="intro-badge" data-badge aria-hidden="true"><img src="images/brand/v8-mark.png" width="364" height="343" alt="" /></div>
       <div class="intro-controls" data-intro-controls hidden><button type="button" data-mute aria-pressed="false">Sound off</button><button type="button" data-intro-skip>Skip</button></div>
 
       <!-- Intro gate: browsers only allow sound after a tap, so the intro starts with the car's start button -->
@@ -78,9 +90,9 @@
           <span class="ig-halo" aria-hidden="true"></span>
           <span class="ig-ripple" aria-hidden="true"></span><span class="ig-ripple" aria-hidden="true"></span><span class="ig-ripple" aria-hidden="true"></span>
           <button type="button" class="ignition" data-ignite aria-label="Start the engine and enter the site">
-            <img class="ig-layer" src="gate/ignite-off.webp" width="1000" height="1000" alt="" draggable="false">
-            <img class="ig-layer ig-ring" src="gate/ignite-ring.webp" width="1000" height="1000" alt="" draggable="false">
-            <img class="ig-layer ig-text" src="gate/ignite-text.webp" width="1000" height="1000" alt="" draggable="false">
+            <img class="ig-layer" src="images/gate/ignite-off.webp" width="1000" height="1000" alt="" draggable="false">
+            <img class="ig-layer ig-ring" src="images/gate/ignite-ring.webp" width="1000" height="1000" alt="" draggable="false">
+            <img class="ig-layer ig-text" src="images/gate/ignite-text.webp" width="1000" height="1000" alt="" draggable="false">
           </button>
           <p class="ig-note" data-gate-note aria-live="polite"></p>
         </div>

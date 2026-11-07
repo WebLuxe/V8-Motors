@@ -10,7 +10,7 @@
  * Only Chromium browsers (Chrome, Edge) can look through an SVG filter like this, and only a PC with a mouse is asked to.
  * Everyone else keeps the frosted look from src/glass.css, which needs nothing from here.
  */
-import { modest } from './device.js';
+import { modest, slowLevel } from './device.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 // what each kind of glass looks like: corner radius (px, or 'pill' for half the height), how deep the rim is (px),
@@ -74,7 +74,7 @@ function filterFor(kind, w, h) {
 
 export function initLens() {
   const chromium = navigator.userAgentData?.brands?.some((b) => b.brand === 'Chromium');
-  if (!chromium || modest || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  if (!chromium || modest || slowLevel >= 2 || !matchMedia('(hover: hover) and (pointer: fine)').matches) return; // a struggling machine (src/lib/device.js) keeps the plain look
   svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('aria-hidden', 'true');
   svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';

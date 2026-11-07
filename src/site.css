@@ -66,8 +66,7 @@
   --gutter: clamp(1.25rem, 4vw, 3rem);
   color-scheme: dark;
 }
-@media (max-width: 899px) { :root { --nav-h: 3.75rem; --tab-h: calc(68px + env(safe-area-inset-bottom)); } }
-@media (orientation: landscape) and (max-height: 500px) and (max-width: 999px) { :root { --tab-h: calc(50px + env(safe-area-inset-bottom)); } } /* a phone held sideways: a slimmer bottom bar (src/phone.css) */
+@media (max-width: 899px) { :root { --nav-h: 3.75rem; --tab-h: env(safe-area-inset-bottom); } } /* no bar at the bottom on phones: the menu is the three lines at the top right */
 
 /* ---------------------------------------------------------------- base */
 @layer base {

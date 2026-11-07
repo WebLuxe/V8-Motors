@@ -11,6 +11,7 @@ import { initFx, photosArrive } from './fx.js';
 import { initGlass, engineReady } from './glass.js';
 import { initLens } from './lens.js';
 import { renderStatus } from './hours.js';
+import { slowLevel, markSlow } from './device.js';
 
 gsap.registerPlugin(ScrollTrigger);
 document.documentElement.classList.add('js');
@@ -348,8 +349,8 @@ function initMenu() {
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
-  // drag down to close: the sheet follows the finger whenever it's scrolled to the top and the finger
-  // moves down (touch events, so the browser's own scrolling doesn't swallow the gesture)
+  // drag up to close: the sheet hangs from the top of the screen, and follows the finger whenever it's scrolled to its end and the
+  // finger moves up (touch events, so the browser's own scrolling doesn't swallow the gesture)
   let y0 = null, dy = 0, t0 = 0, dragging = false;
   sheet.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
@@ -357,20 +358,20 @@ function initMenu() {
   }, { passive: true });
   sheet.addEventListener('touchmove', (e) => {
     if (y0 == null) return;
-    const d = e.touches[0].clientY - y0;
-    if (!dragging && (d < 6 || sheet.scrollTop > 0)) { if (d < 0 || sheet.scrollTop > 0) y0 = null; return; }
+    const d = e.touches[0].clientY - y0, atEnd = sheet.scrollTop + sheet.clientHeight >= sheet.scrollHeight - 2;
+    if (!dragging && (d > -6 || !atEnd)) { if (d > 0 || !atEnd) y0 = null; return; }
     dragging = true;
     e.preventDefault();
-    dy = Math.max(0, d);
+    dy = Math.min(0, d);
     sheet.classList.add('is-dragging');
     sheet.style.transform = `translateY(${dy}px)`;
   }, { passive: false });
   const end = () => {
     if (y0 == null && !dragging) return;
-    const v = dy / Math.max(1, performance.now() - t0);
+    const v = -dy / Math.max(1, performance.now() - t0);
     sheet.classList.remove('is-dragging');
     y0 = null;
-    if (dragging && (dy > sheet.offsetHeight * 0.28 || (dy > 30 && v > 0.6))) set(false);
+    if (dragging && (-dy > sheet.offsetHeight * 0.28 || (-dy > 30 && v > 0.6))) set(false);
     else sheet.style.transform = '';
     dragging = false;
   };
@@ -381,12 +382,37 @@ function initMenu() {
   addEventListener('pageshow', () => set(false));
 }
 
+/* ------------------------------------------------------------------ light mode
+   Watches how smoothly the page moves while something is moving (a scroll, a tap, a drag), on every device, phones included. If it
+   stays below 24 frames a second for two seconds running, this device can't keep up with the effects: light mode switches on at
+   once (see the end of src/phone.css), the glass background stops, and it is remembered (smooth scrolling goes from the next page) (src/lib/device.js) so the next pages start
+   light from their first paint. Loading, the intro and page changes don't count: they always stutter a little. */
+function watchSpeed() {
+  if (reduced || slowLevel >= 2 || html.classList.contains('lite')) return;
+  let active = 0, last = 0, frames = 0, from = 0, lows = 0;
+  const busy = () => { active = performance.now() + 450; };
+  for (const ev of ['scroll', 'wheel', 'pointerdown', 'touchmove']) addEventListener(ev, busy, { passive: true });
+  const settled = performance.now() + 1500;
+  const f = (t) => {
+    const gap = t - last; last = t;
+    if (t < settled || t > active || gap > 500 || document.hidden || html.classList.contains('leaving') || html.classList.contains('play-intro') || html.classList.contains('curtain-in')) { frames = 0; from = t; }
+    else if (++frames && t - from >= 1000) {
+      const fps = (frames * 1000) / (t - from);
+      frames = 0; from = t;
+      lows = fps < 24 ? lows + 1 : 0;
+      if (lows >= 2) { markSlow(2); html.classList.add('lite'); return; } // smooth scrolling stays for this page and is off from the next
+    }
+    requestAnimationFrame(f);
+  };
+  requestAnimationFrame(f);
+}
+
 /* ------------------------------------------------------------------ scrolling */
 // Smooth wheel scrolling is for mouse and trackpad only. On phones and tablets the browser's own touch
 // scrolling is smoother than anything script can do, and skipping Lenis keeps the main thread quiet.
 const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
 function initScroll() {
-  if (!reduced && finePointer) {
+  if (!reduced && finePointer && !html.classList.contains('lite')) { // light mode scrolls the browser's own way, which costs nothing
     lenis = new Lenis({ lerp: 0.12, wheelMultiplier: 0.9 });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000));
@@ -472,6 +498,7 @@ export function initLayout({ home = false, immersive = false } = {}) {
   initMenu();
   $$('[data-open-status]').forEach(renderStatus);
   initScroll();
+  watchSpeed();
   syncStoreUI();
   window.addEventListener('store:change', syncStoreUI);
   // on the home page the notice waits until the intro is over, so it never covers the start button
