@@ -39,11 +39,25 @@ function setupGallery() {
     }
     return ready.get(k);
   };
+  // every photo shows in the same box, whatever its shape (so the page below never jumps). One taken upright, or so much wider than
+  // the box that its ends would be cut off, is shown whole on a blurred copy of itself instead (is-odd in src/glass.css). The usual
+  // 4:3 ones still fill the box, as they always have on a PC
+  const main = $('.gallery-main');
+  const fit = (w = img.naturalWidth, h = img.naturalHeight) => {
+    const r = main.getBoundingClientRect();
+    if (w && h && r.width && r.height) { const k = w / h / (r.width / r.height); main.classList.toggle('is-odd', w < h || k > 1.25 || k < 0.6); }
+  };
+  img.addEventListener('load', () => fit());
+  if (img.complete) fit();
+  addEventListener('resize', () => fit(), { passive: true });
+  main.style.setProperty('--fill', `url("${small(0)}")`);
   let ask = 0;
   const show = (k, dir = 1) => {
     i = (k + n) % n;
     const at = i, mine = ++ask;
     const p = fetchPhoto(at);
+    main.style.setProperty('--fill', `url("${small(at)}")`);
+    if (p.done) fit(p.im.naturalWidth, p.im.naturalHeight); // its shape is known: the box is set for it before it shows
     img.srcset = '';
     img.src = p.done ? big(at) : small(at);
     if (!p.done) p.wait.then(() => { if (mine === ask) img.src = big(at); });
@@ -82,7 +96,6 @@ function setupGallery() {
   };
   // swipe between photos; a tap opens full screen
   let sx = null;
-  const main = $('.gallery-main');
   main.addEventListener('pointerdown', (e) => (sx = e.button === 0 ? e.clientX : null)); // only the main button counts, not a right-click to save
   main.addEventListener('pointercancel', () => (sx = null));
   main.addEventListener('pointerleave', () => (sx = null));

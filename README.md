@@ -119,7 +119,8 @@ public/                copied to the site as it is
   images/cars/<car>/   each car's photos (made by the stock sync)
   images/share/        the picture each car shows when its link is shared
   media/intro/         the intro film for phones and the engine sound
-  media/hero/          the filmed car for phones that don't draw it live: its loop, its three tricks and a full turn
+  media/hero/          the filmed car for phones that don't draw it live: its loop, its three tricks, and a full turn as
+                       120 pictures packed in one file (turn-*.bin), drawn as a finger turns the car
   models/              the 3D car, engine, bay and sign, and the showroom textures (computers and stronger phones)
   sw.js, icons, site.webmanifest
 ```
@@ -131,7 +132,7 @@ public/                copied to the site as it is
 - `src/lib/layout.js`: what every page shares (transitions, nav underline, menu sheet, scrolling, toasts, forms). `src/lib/glass.js`: the steel, the racing cars and the liquid glass, in one pass. `src/lib/shapes.js`: the 2D car drawings. `src/lib/fx.js`: reveals, count-ups, the rev bar, photo swipes. `src/lib/odo.js`: the odometer numbers. `src/lib/hours.js`: opening hours and the Saturday countdown.
 - `vite.config.js`: a small plugin fills `<!--@...-->` placeholders, so every page ships complete HTML.
 - `scripts/prerender.mjs`: writes `cars/*.html`, `public/sitemap.xml`, `public/robots.txt` and `public/llms.txt` (generated, not committed).
-- `scripts/film.mjs`: renders the phone intro film. `scripts/hero-loop.mjs`: renders the looping car video for devices that don't draw the live 3D car, and `scripts/trick-films.mjs` its three tricks and its full turn. `scripts/check-media.mjs` checks every video plays on phones (a deploy stops if one doesn't).
+- `scripts/film.mjs`: renders the phone intro film. `scripts/hero-loop.mjs`: renders the looping car video for devices that don't draw the live 3D car, and `scripts/trick-films.mjs` its three tricks and its full turn (`scripts/turn-pack.mjs` packs the turn's pictures). Each trick ends at rest on the pose the loop starts on, and the page hands over there (heroTricks in `src/pages/home.js`). `scripts/check-media.mjs` checks every video plays on phones (a deploy stops if one doesn't). After changing a file in `public/media/hero/` under the same name, raise `VERSION` in `public/sw.js`.
 - `src/site.css`: the base styles. `src/flagship.css`: the current design layer, loaded after it. `src/pages/*.js`: behaviour for each page.
 
 ## Still needs the dealer

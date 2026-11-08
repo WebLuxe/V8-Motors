@@ -33,14 +33,22 @@ await p.waitForFunction(() => !!window.__tl, null, { timeout: 20000 });
 const end = await p.evaluate(() => window.__tl.duration());
 for (let t = 0; t <= end + 1; t += 0.25) await p.evaluate((x) => { const c = window.__capture; window.__hold = x; c.go = true; window.__gsap.ticker.tick(); c.go = false; }, t);
 await p.waitForTimeout(500);
+// the page gives the high beams one soft flash once the intro is over (flashLights in src/pages/home.js), on its own clock: it is
+// stopped, or it lands in the loop's first second and every hand-over to the loop would flash the lights
+await p.evaluate(() => { window.__gsap.killTweensOf(window.__s); window.__s.high = 0; });
 const hero = await p.evaluate(() => ({ az: window.__s.az, el: window.__s.el }));
 console.log(kind, 'canvas', await p.evaluate(() => { const c = document.querySelector('.hero-canvas'); return [c.width, c.height]; }), 'hero pose', hero);
 
 const frames = (LOOP + 1) * FPS, started = Date.now();
 for (let n = 0; n < frames; n++) {
   const data = await p.evaluate(({ n, FPS, LOOP, hero }) => {
-    const c = window.__capture, s = window.__s, a = (2 * Math.PI * n) / (FPS * LOOP);
-    s.az = hero.az + 0.2 * Math.sin(a); // round to one side, back, round to the other
+    // the loop's own clock: frame FPS is its first frame, the hero pose; the second rendered before it is what its end
+    // cross-fades into (see the ffmpeg line above), so the finished loop starts on exactly that pose
+    const c = window.__capture, s = window.__s, a = (2 * Math.PI * (n - FPS)) / (FPS * LOOP);
+    // out from rest and back to rest: the camera eases away from the hero pose, round to one side, back through it, round to the
+    // other, and settles where it began, so the loop takes over from the intro, a trick or the turn (which all end on that pose,
+    // still) without a jump or a jolt. The same sway is in scripts/trick-films.mjs (SWAY): change both together
+    s.az = hero.az + (0.3 * Math.sin(a) * (1 - Math.cos(a))) / 2;
     s.el = hero.el + 0.025 * (1 - Math.cos(a)); // and up a touch as it goes
     c.go = true; window.__gsap.ticker.tick(); c.go = false;
     return document.querySelector('.hero-canvas').toDataURL('image/jpeg', 0.95).slice(23);

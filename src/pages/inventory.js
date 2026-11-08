@@ -230,12 +230,31 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------------------------------------------------------------- view toggle
+/* List or grid. On a computer the cards on screen slide and resize into their new places (Flip): only those, since moving every
+   card's photo at once is what made it stutter. A touch screen fades the list through instead, quickly: a phone draws a fade as
+   smoothly as a computer does, where re-laying dozens of photos frame by frame made even a good phone lag. */
+const fadeSwap = !matchMedia('(hover: hover) and (pointer: fine)').matches;
 function setView(v, animate = true) {
+  if (grid.dataset.view === v) return;
   if (animate) calm(grid);
-  const flip = animate && !reduced ? Flip.getState($$('.car:not([hidden]), .car:not([hidden]) .car-media, .car:not([hidden]) .car-info', grid)) : null;
-  grid.dataset.view = v;
-  $$('.view-toggle [data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
-  if (flip) Flip.from(flip, { duration: 0.7, ease: 'expo.inOut', nested: true, absolute: false, onComplete: () => ScrollTrigger.refresh() });
+  const set = () => {
+    grid.dataset.view = v;
+    $$('.view-toggle [data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  };
+  if (!animate || reduced) { set(); ScrollTrigger.refresh(); return; }
+  if (fadeSwap) {
+    gsap.killTweensOf(grid);
+    gsap.to(grid, { opacity: 0, duration: 0.12, ease: 'power1.in', onComplete: () => {
+      set();
+      ScrollTrigger.refresh();
+      gsap.fromTo(grid, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out', clearProps: 'opacity,transform' });
+    } });
+    return;
+  }
+  const onScreen = $$('.car:not([hidden])', grid).filter((li) => { const r = li.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
+  const flip = Flip.getState(onScreen.flatMap((li) => [li, $('.car-media', li), $('.car-info', li)]));
+  set();
+  Flip.from(flip, { duration: 0.7, ease: 'expo.inOut', nested: true, absolute: false, onComplete: () => ScrollTrigger.refresh() });
 }
 $$('.view-toggle [data-view]').forEach((b) => b.addEventListener('click', () => { setView(b.dataset.view); writeUrl(readState()); }));
 

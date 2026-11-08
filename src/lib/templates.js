@@ -75,7 +75,7 @@ const soft = (w) => (w === w.toUpperCase() ? w : w.toLowerCase());
 const carLine = (c) => [c.year, c.colour && soft(c.colour), c.body && soft(c.body)].filter(Boolean).join(' ');
 const specLine = (c) => [[c.engine, soft(c.fuel)].filter(Boolean).join(' '), soft(c.gearbox), c.km != null ? km(c.km) : ''].filter(Boolean).join(', ');
 
-export function carCard(c, P = '', { eager = false, sizes = '(min-width: 1000px) 30vw, (min-width: 640px) 45vw, 92vw' } = {}) {
+export function carCard(c, P = '', { eager = false, sizes = '(min-width: 1000px) 30vw, (min-width: 640px) 42vw, 41vw' } = {}) {
   const n = c.thumbs.length;
   return `<li class="car" data-id="${c.id}" data-flip-id="${c.id}">
     <a href="${carUrl(c, P)}" class="car-media" tabindex="-1" aria-hidden="true" data-scrub="${c.thumbs.map((t) => P + t).join('|')}">
@@ -196,7 +196,7 @@ export function footerHTML(P = '') {
 export function headHTML({ title, desc, path, image, jsonld = [], P = '' }) {
   const url = SITE + path;
   const img = image || `${SITE}og.jpg`;
-  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload')sessionStorage.removeItem('v8:compare');if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{var sv=JSON.parse(localStorage.getItem('v8:slow')),n=navigator;if((sv&&Date.now()-sv.at<2592e5&&sv.level>=2)||(!/iPhone|iPad|iPod|Macintosh/.test(n.userAgent)&&matchMedia('(pointer: coarse)').matches&&((n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=3)))d.classList.add('lite')}catch(e){}try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');addEventListener('pagereveal',function(e){if(e.viewTransition&&d.classList.contains('curtain-in'))e.viewTransition.skipTransition()});
+  return `<script>(function(){try{var n=performance.getEntriesByType('navigation')[0],f=location.pathname.split('/').pop();if(n&&n.type==='reload')sessionStorage.removeItem('v8:compare');if(n&&n.type==='reload'&&f&&f!=='index.html'){sessionStorage.setItem('v8:restart','1');location.replace('${P}./')}}catch(e){}})();(function(d){try{var sv=JSON.parse(localStorage.getItem('v8:slow')),n=navigator;if((sv&&Date.now()-sv.at<2592e5&&sv.level>=2)||(!/iPhone|iPad|iPod|Macintosh/.test(n.userAgent)&&matchMedia('(pointer: coarse)').matches&&((n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=3)))d.classList.add('lite')}catch(e){}try{if(sessionStorage.getItem('v8:curtain')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)d.classList.add('curtain-in');addEventListener('pagereveal',function(e){if(e.viewTransition&&d.classList.contains('curtain-in')){e.viewTransition.ready.catch(function(){});e.viewTransition.skipTransition()}});
     /* if the page script never runs (offline, blocked), don't leave the intro or hidden content in the way */
     setTimeout(function(){if(!window.__v8){d.classList.remove('play-intro','js');}},9000);}catch(e){}})(document.documentElement)</script>
   <script type="speculationrules">{"prefetch":[{"where":{"and":[{"selector_matches":"a[href]"},{"not":{"selector_matches":"[rel~=noopener],[href^='tel:'],[href^='mailto:'],[href*='://']"}}]},"eagerness":"moderate"}]}</script>

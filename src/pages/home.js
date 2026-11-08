@@ -118,7 +118,8 @@ function heroLoop({ hold = false } = {}) {
   v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; v.disablePictureInPicture = true;
   for (const a of ['muted', 'playsinline', 'loop']) v.setAttribute(a, '');
   v.setAttribute('aria-hidden', 'true');
-  let hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably', want = '';
+  let hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably', want = '', markReady;
+  v.ready = new Promise((done) => { markReady = done; }); // it has its file (heroTricks downloads the rest after it)
   const pick = () => {
     const shape = innerHeight > innerWidth ? 'portrait' : 'landscape';
     const url = new URL(LOOP(shape, hevc), document.baseURI).href;
@@ -131,7 +132,7 @@ function heroLoop({ hold = false } = {}) {
     // (some fetch nothing of a video that isn't playing yet). Otherwise it simply streams. A download that hasn't arrived by the
     // end of the intro (one stalled connection was enough, on a real phone) isn't waited for: it streams then (release, below),
     // and the download, when it comes, is let go
-    const use = (src) => { if (want !== url || (src !== url && !held && v.getAttribute('src'))) return; v.src = src; if (!held) v.play().catch(() => {}); };
+    const use = (src) => { if (want !== url || (src !== url && !held && v.getAttribute('src'))) return; v.src = src; markReady(); if (!held) v.play().catch(() => {}); };
     if (held) download(url).then((b) => use(URL.createObjectURL(b)), () => use(url));
     else use(url);
   };
@@ -151,7 +152,7 @@ function heroLoop({ hold = false } = {}) {
   v.release = () => {
     if (!held) return;
     held = false;
-    if (!v.getAttribute('src')) v.src = want; // its download hasn't arrived: streamed, rather than nothing on screen
+    if (!v.getAttribute('src')) { v.src = want; markReady(); } // its download hasn't arrived: streamed, rather than nothing on screen
     v.style.transition = 'none';
     v.classList.add('is-on');
     v.currentTime = 0;
@@ -163,126 +164,176 @@ function heroLoop({ hold = false } = {}) {
 }
 
 /* ================================================================== the filmed car's tricks
-   Where the car is a film rather than drawn live, it does the same tricks and turns the same way, from films recorded off the very
-   same scene (scripts/trick-films.mjs): the three buttons each play theirs, and a sideways drag turns the car through a full
-   circle recorded a few degrees at a time, coasting on when let go and staying turned, as the live car does. Every trick starts
-   on the hero pose and ends on it, which is exactly where the loop starts, so the loop picks up from its first frame without a
-   jump. They are downloaded whole once the loop plays (see prepareFilm for why), so a tap plays one at once. */
-const TURN_FRAMES = 120, TURN_FPS = 30;
+   Where the car is a film rather than drawn live, it does the same tricks and turns the same way, recorded off the very same scene
+   (scripts/trick-films.mjs). The three buttons each play theirs, starting on the hero pose. Each trick comes back to rest on that
+   pose before its camera starts the loop's sway, and right there, with the car standing still, the page hands over: that picture is
+   held on a canvas, the trick's film is let go of, and the loop starts from its first frame, the very same picture; the held one
+   goes the moment the loop shows its next frame. A phone shares out only a few video decoders, and the loop couldn't start again
+   while the finished trick still had one, so the picture stood still mid-sway: now whatever the wait is, it is spent on a car at
+   rest, where nobody can see it.
+   A sideways drag turns the car a full circle, coasting on when let go and staying turned, as the live car does. That turn is
+   pictures rather than a film: each angle is drawn straight from memory as the finger moves, which even a weak phone does at once
+   (seeking through a film there lagged well behind the finger). All of it downloads during the intro, straight after the loop,
+   so the buttons work the moment they show; one tapped before its film is here says so, and plays as soon as it arrives. */
+const TRICK_LEAD = 0.8; // each trick's last seconds are the loop's first (LEAD in scripts/trick-films.mjs): it hands over where they begin
 let memoryPlays = true; // does this browser play a film from memory? The intro film finds out first (filmReady)
 function heroTricks(loopVideo) {
   const box = $('[data-hero-moves]'), hero = $('.hero');
   if (!box || heroTricks.on) return;
   heroTricks.on = true;
   const shape = () => (innerHeight > innerWidth ? 'portrait' : 'landscape');
-  // (the turn is H.264 everywhere: HEVC made of nothing but keyframes is a profile phones don't play)
-  const url = (name) => new URL(`media/hero/${name}-${shape()}${loopVideo.hevc() && name !== 'turn' ? '-hevc' : ''}.mp4`, document.baseURI).href;
-  // each film downloaded whole, kept in memory (mem), with its address to stream it from (net) for a browser that won't play a
-  // film from memory: the first time one doesn't start from memory, all of them stream from then on (memoryOk)
+  const file = (name) => new URL(`media/hero/${name}`, document.baseURI).href;
+  const film = (name, hevc = loopVideo.hevc()) => file(`${name}-${shape()}${hevc ? '-hevc' : ''}.mp4`);
+  // each trick downloaded whole and played from memory (mem), or streamed from its address (net) by a browser that won't play a
+  // film from memory: the first time one doesn't start from memory, they all stream from then on (memoryOk). Kept by address, so a
+  // phone that turns out not to play HEVC after all (the loop finds out, in heroLoop) gets the H.264 ones from then on
   const got = {};
-  let memoryOk = memoryPlays; // what the intro film found out (filmReady), if there was one
-  const get = (name) => (got[name + shape()] ||= download(url(name)).then((b) => ({ mem: URL.createObjectURL(b), net: url(name) }), () => ({ mem: null, net: url(name) })));
+  let memoryOk = memoryPlays;
+  const get = (name) => { const u = film(name); return (got[u] ||= download(u).then((b) => ({ mem: URL.createObjectURL(b), net: u }), () => ({ mem: null, net: u }))); };
   const pick = (f) => (memoryOk && f.mem ? f.mem : f.net);
-  const film = (cls) => {
-    const v = document.createElement('video');
-    v.className = cls;
-    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.disablePictureInPicture = true;
-    for (const a of ['muted', 'playsinline']) v.setAttribute(a, '');
-    v.setAttribute('aria-hidden', 'true');
-    loopVideo.after(v);
-    return v;
-  };
-  const trick = film('hero-trick'), turn = film('hero-turn');
-  let busy = false, angle = 0, turnedNow = false;
 
-  // the loop rests (unseen, so not decoded) while a trick or the turn is on top, and picks up from its first frame, which is the
-  // very picture they end on, so the hand back is invisible
-  const rest = () => { loopVideo.resting = true; loopVideo.pause(); };
-  // a film done with lets go of its file, so a phone never decodes more than it shows (a weak one shares out few decoders)
+  const layer = (tag, cls) => { const el = document.createElement(tag); el.className = cls; el.setAttribute('aria-hidden', 'true'); return el; };
+  const still = layer('canvas', 'hero-still'), trick = layer('video', 'hero-trick'), turn = layer('canvas', 'hero-turn');
+  trick.muted = true; trick.playsInline = true; trick.preload = 'auto'; trick.disablePictureInPicture = true;
+  for (const a of ['muted', 'playsinline']) trick.setAttribute(a, '');
+  loopVideo.after(still, trick, turn); // a held picture lies right on the loop, so a trick or the turn always covers it
+  let busy = false, angle = 0, turnedNow = false, spinV = 0;
+
+  // a canvas the size of the hero in device pixels (at most two to a CSS pixel), and a picture drawn on it cover-fitted, exactly as
+  // the films are (object-fit: cover), so whatever is drawn there lines up with them
+  const fit = (c) => { const r = c.getBoundingClientRect(), k = Math.min(devicePixelRatio || 1, 2); c.width = Math.round(r.width * k); c.height = Math.round(r.height * k); };
+  const cover = (c, pic, w, h) => { const sc = Math.max(c.width / w, c.height / h); c.getContext('2d').drawImage(pic, (c.width - w * sc) / 2, (c.height - h * sc) / 2, w * sc, h * sc); };
+  // a film done with lets go of its file, so a phone never holds more video decoders than it needs
   const free = (v) => { v.removeAttribute('src'); v.load(); };
-  const backToLoop = (from) => {
+
+  // the loop waits underneath, still, on its first frame: the hero pose, where every trick and the turn end
+  const rest = () => { loopVideo.resting = true; loopVideo.pause(); loopVideo.currentTime = 0; };
+  // and then moves again. What lies on top (the held picture, the turn) stays until the loop has really shown a new frame
+  let resumes = 0;
+  const resume = (top) => {
     loopVideo.resting = false;
-    loopVideo.currentTime = 0;
-    loopVideo.play().catch(() => setTimeout(() => { if (!loopVideo.resting) loopVideo.play().catch(() => {}); }, 300)); // refused once (a browser busy swapping films): again
-    gsap.to(from, { opacity: 0, duration: 0.25, delay: 0.08, ease: 'sine.inOut', onComplete: () => { from.classList.remove('is-on'); gsap.set(from, { clearProps: 'opacity' }); free(from); } });
+    const mine = ++resumes;
+    let gone = false;
+    const off = () => { if (!gone && mine === resumes) { gone = true; top.classList.remove('is-on'); } };
+    // the browser says it has shown a new frame, or the loop's clock has moved past its first one, whichever comes first (Safari
+    // can report the frame half a second late, while the loop is long since moving underneath)
+    loopVideo.requestVideoFrameCallback?.(() => requestAnimationFrame(off));
+    const moved = () => { if (gone || mine !== resumes) return; if (!loopVideo.paused && loopVideo.currentTime > 0.04) requestAnimationFrame(off); else requestAnimationFrame(moved); };
+    requestAnimationFrame(moved);
+    const go = (n) => loopVideo.play().catch(() => { if (n < 4 && mine === resumes && !loopVideo.resting) setTimeout(() => go(n + 1), 250); });
+    go(0);
+    setTimeout(off, 4000); // never held longer than this, whatever the loop does
   };
-  // the car turned round by a finger, shown at the nearest recorded angle
+
+  // ---- the three tricks
+  const play = (name, button) => {
+    if (busy || scrollY > 40 || document.documentElement.classList.contains('play-intro')) return;
+    busy = true;
+    const waiting = setTimeout(() => button?.classList.add('is-loading'), 120); // not here yet: the button says so
+    const done = () => { clearTimeout(waiting); button?.classList.remove('is-loading'); };
+    get(`trick-${name}`).then((f) => roll(name, f, pick(f), done));
+  };
+  // from memory, then streamed, then (an HEVC film) in H.264. One that can't play at all is let go of quietly, and the loop never
+  // stopped
+  const roll = (name, f, src, done) => {
+    let started = false, settled = false;
+    const next = () => {
+      if (started || settled) return;
+      settled = true;
+      trick.onplaying = trick.onerror = null;
+      if (src === f.mem) { memoryOk = false; roll(name, f, f.net, done); return; }
+      if (/-hevc\.mp4$/.test(src)) { const u = film(`trick-${name}`, false); roll(name, { mem: null, net: u }, u, done); return; }
+      free(trick); done(); busy = false;
+    };
+    trick.onerror = next;
+    trick.onplaying = () => {
+      started = true;
+      trick.onplaying = trick.onerror = null;
+      done();
+      trick.classList.add('is-on'); // a cut, straight onto its first frame
+      rest();
+      if (turnedNow) { turnedNow = false; angle = 0; turn.classList.remove('is-on'); }
+      // back at rest, just before its camera starts to sway: the hand over
+      const watch = () => {
+        if (!trick.ended && trick.currentTime < trick.duration - TRICK_LEAD - 0.02) { requestAnimationFrame(watch); return; }
+        fit(still);
+        cover(still, trick, trick.videoWidth, trick.videoHeight);
+        still.classList.add('is-on');
+        trick.classList.remove('is-on');
+        free(trick);
+        busy = false;
+        resume(still);
+      };
+      requestAnimationFrame(watch);
+    };
+    trick.src = src;
+    trick.play().catch(() => {});
+    setTimeout(next, src === f.mem ? 2000 : 8000); // not playing two seconds on from memory, or eight streamed: the next way
+  };
+
+  // ---- the turn: turn-<shape>.bin is every picture of it in one file (how many, where each starts, then the JPEGs), drawn on a
+  // canvas laid exactly where the loop is (the same cover-fit), a few decoded ahead of the finger and the last few kept
+  let pack = null;
+  const getPack = () => (got[`pack${shape()}`] ||= download(file(`turn-${shape()}.bin`)).then((b) => b.arrayBuffer()).then((buf) => {
+    const head = new DataView(buf), n = head.getUint32(0, true), at = (i) => head.getUint32(4 + 4 * i, true), base = 4 + 4 * (n + 1);
+    return { shape: shape(), n, pictures: Array.from({ length: n }, (_, i) => new Blob([new Uint8Array(buf, base + at(i), at(i + 1) - at(i))], { type: 'image/jpeg' })) };
+  }).catch(() => null));
+  const usePack = () => getPack().then((p) => { if (p && p.shape === shape()) pack = p; });
+  const decoded = new Map(); // picture number -> its decoded picture, the most recent dozen
+  const decode = (i) => {
+    let d = decoded.get(i);
+    if (d) { decoded.delete(i); decoded.set(i, d); return d; }
+    d = createImageBitmap(pack.pictures[i]);
+    decoded.set(i, d);
+    if (decoded.size > 12) { const [k, old] = decoded.entries().next().value; decoded.delete(k); old.then((b) => b.close?.(), () => {}); }
+    return d;
+  };
+  let want = -1;
+  const paint = (bmp) => cover(turn, bmp, bmp.width, bmp.height);
   const showAngle = () => {
-    const n = ((Math.round((angle / (Math.PI * 2)) * TURN_FRAMES) % TURN_FRAMES) + TURN_FRAMES) % TURN_FRAMES;
-    const t = (n + 0.5) / TURN_FPS;
-    if (Math.abs(turn.currentTime - t) > 0.01) turn.currentTime = t;
+    if (!pack) return;
+    const n = pack.n, i = ((Math.round((angle / (Math.PI * 2)) * n) % n) + n) % n;
+    if (i === want) return;
+    want = i;
+    decode(i).then((bmp) => { if (want === i) paint(bmp); }, () => {});
+    const dir = spinV < 0 ? -1 : 1;
+    for (let k = 1; k <= 3; k++) decode((i + dir * k + n) % n).catch(() => {});
   };
   const toTurn = () => {
     if (turnedNow) return true;
-    if (!turn.src || turn.readyState < 2) return false; // not here yet: the car stays as it is
+    if (!pack) return false; // not here yet: the car stays as it is
     turnedNow = true;
+    fit(turn);
+    want = -1;
     showAngle();
-    turn.classList.add('is-on');
-    rest();
+    rest(); // the turn starts and ends on the hero pose, the loop's first frame
+    requestAnimationFrame(() => turn.classList.add('is-on'));
     return true;
   };
   // back to facing you, the short way round, and only then the loop: never two cars on screen at once
-  let leaving = false;
+  let leaving = false, coast = 0;
   const leaveTurn = (at = 0.45) => {
     if (!turnedNow || leaving) return;
     leaving = true;
     cancelAnimationFrame(coast);
     const home = Math.round(angle / (Math.PI * 2)) * Math.PI * 2;
     gsap.to({ a: angle }, { a: home, duration: at, ease: 'sine.inOut', onUpdate() { angle = this.targets()[0].a; showAngle(); },
-      onComplete: () => { leaving = false; turnedNow = false; angle = 0; backToLoop(turn); } });
-  };
-
-  const play = (name) => {
-    if (busy || scrollY > 40 || document.documentElement.classList.contains('play-intro')) return;
-    busy = true;
-    get(`trick-${name}`).then((f) => roll(f, pick(f)));
-  };
-  const roll = (f, src) => {
-    let started = false;
-    trick.onplaying = () => {
-      started = true;
-      trick.onplaying = null;
-      trick.classList.add('is-on'); // a cut, straight onto its first frame
-      rest();
-      if (turnedNow) { turnedNow = false; angle = 0; turn.classList.remove('is-on'); }
-    };
-    trick.onended = () => { trick.onended = null; busy = false; backToLoop(trick); };
-    trick.src = src;
-    trick.play().catch(() => {});
-    // from memory and not playing two seconds on: this browser doesn't play films from memory, so streamed, now and from now on.
-    // Streamed and still nothing after eight: the tap is let go of quietly, and the loop never stopped
-    setTimeout(() => {
-      if (started || trick.src !== src) return;
-      if (src === f.mem) { memoryOk = false; roll(f, f.net); } else { trick.onplaying = trick.onended = null; busy = false; }
-    }, src === f.mem ? 2000 : 8000);
-  };
-
-  // the turn's film is only given to its player when a finger comes down on the car, and let go of once it faces you again
-  const turnFilm = () => {
-    if (turn.getAttribute('src') || turnFilm.asked) return;
-    turnFilm.asked = true;
-    get('turn').then((f) => {
-      turnFilm.asked = false;
-      const src = pick(f);
-      turn.src = src;
-      // from memory and no picture three seconds on: streamed instead (an iPhone shows none until a touch: see start)
-      if (src === f.mem) setTimeout(() => { if (turn.src === src && turn.readyState < 2) { memoryOk = false; turn.src = f.net; } }, 3000);
-    });
+      onComplete: () => { leaving = false; turnedNow = false; angle = 0; resume(turn); } });
   };
 
   // a sideways drag turns it, the way rover3d.js turns the live car (the same speed for the same finger), and it coasts on after
-  let dragging = false, x0 = 0, xs = 0, v = 0, last = 0, coast = 0;
+  let dragging = false, x0 = 0, xs = 0, last = 0;
   hero.addEventListener('pointerdown', (e) => {
     if (busy || e.button || scrollY > 40 || e.target.closest?.('a, button, input, select, label, .gate')) return;
-    dragging = true; x0 = xs = e.clientX; v = 0; last = performance.now(); cancelAnimationFrame(coast);
-    turnFilm();
+    dragging = true; x0 = xs = e.clientX; spinV = 0; last = performance.now(); cancelAnimationFrame(coast);
+    if (!pack) usePack();
   });
   addEventListener('pointermove', (e) => {
     if (!dragging || (!turnedNow && Math.abs(e.clientX - xs) < 8) || !toTurn()) return;
     const now = performance.now(), a = ((e.clientX - x0) / Math.min(innerWidth, 900)) * Math.PI * 1.5;
     x0 = e.clientX;
     angle += a;
-    v = (a / Math.max(4, now - last)) * 16;
+    spinV = (a / Math.max(4, now - last)) * 16;
     last = now;
     showAngle();
   }, { passive: true });
@@ -290,29 +341,27 @@ function heroTricks(loopVideo) {
     if (!dragging) return;
     dragging = false;
     if (!turnedNow) return;
-    const step = () => { angle += v; v *= 0.94; showAngle(); if (Math.abs(v) > 0.0002) coast = requestAnimationFrame(step); };
+    const step = () => { angle += spinV; spinV *= 0.94; showAngle(); if (Math.abs(spinV) > 0.0002) coast = requestAnimationFrame(step); };
     coast = requestAnimationFrame(step);
   };
   addEventListener('pointerup', release);
   addEventListener('pointercancel', release);
   // scrolled on, it turns back to face you, as the live car does, and the loop carries on
   addEventListener('scroll', () => { if (scrollY > 6 && turnedNow && !dragging) leaveTurn(); }, { passive: true });
+  // turned sideways (or back): the pictures in that shape
+  matchMedia('(orientation: portrait)').addEventListener('change', () => { if (turnedNow) leaveTurn(0.01); pack = null; usePack(); });
+
+  // everything during the intro, right after the loop (which comes first: it is on screen the moment the intro ends). The tricks
+  // first, they are what a visitor taps, then the turn
+  loopVideo.ready.then(() => ['trick-spin', 'trick-dance', 'trick-lights'].reduce((prev, name) => prev.then(() => get(name)), Promise.resolve())).then(usePack);
 
   const start = () => {
     box.hidden = false;
     gsap.from(box.children, { opacity: 0, y: 10, duration: 0.7, delay: 0.6, stagger: 0.08, ease: 'expo.out', clearProps: 'opacity,transform' });
-    box.addEventListener('click', (e) => { const b = e.target.closest('[data-move]'); if (b) play(b.dataset.move); });
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-move]'); if (b) play(b.dataset.move, b); });
     const away = () => box.classList.toggle('is-away', scrollY > 30);
     addEventListener('scroll', away, { passive: true });
     away();
-    // all four, one after another, once the loop is really playing, so they never hold it up: the tricks first, they are what a
-    // visitor taps
-    const fetchAll = () => ['trick-spin', 'trick-dance', 'trick-lights', 'turn'].reduce((prev, name) => prev.then(() => get(name)), Promise.resolve());
-    if (!loopVideo.paused && loopVideo.readyState >= 3) fetchAll(); else loopVideo.addEventListener('playing', fetchAll, { once: true });
-    // turned sideways (or back): the turn recorded in that shape, the next time a finger asks for it
-    matchMedia('(orientation: portrait)').addEventListener('change', () => { if (turnedNow) leaveTurn(0.01); else free(turn); });
-    // an iPhone loads nothing of a video until a touch asks for it: the first touch on the car does
-    hero.addEventListener('touchend', () => { if (turn.src && turn.readyState < 2) turn.play().then(() => turn.pause(), () => {}); }, { passive: true });
   };
   if (document.documentElement.classList.contains('play-intro')) addEventListener('v8:intro-done', start, { once: true });
   else start();
@@ -878,7 +927,7 @@ async function runIntro() {
   removeEventListener('keydown', onKey);
   document.removeEventListener('visibilitychange', carryOn);
   film?.pause();
-  stageReady.then(() => film?.remove()); // not before the car has taken over, however late it arrives
+  stageReady.then(() => { if (film) { film.removeAttribute('src'); film.load(); film.remove(); } }); // not before the car has taken over, however late it arrives; its decoder let go of at once
   gsap.to(controls, { opacity: 0, duration: 0.3, onComplete: () => controls.remove() });
   if (withSound && !film) audio.ctx.close().catch(() => {});
   stage?.dropEngine();

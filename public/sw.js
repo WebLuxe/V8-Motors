@@ -2,7 +2,7 @@
 // old copy only serves when there is no connection. Files with a fingerprint in their name never change once
 // published, so they come straight from here. Stock photos, models and the intro show at once and refresh quietly behind the scenes.
 // one up whenever a file kept here changes under the same name (the models, media/hero's films): the old copies are cleared then
-const VERSION = 'v8motors-3';
+const VERSION = 'v8motors-4';
 const ONLY_OURS = /^v8motors-/; // this address is shared with other sites, so only ever clear our own caches
 const cache = () => caches.open(VERSION);
 
@@ -26,7 +26,9 @@ addEventListener('fetch', (e) => {
     return;
   }
   if (/\/(assets|models|images\/gate|images\/brand|media\/hero)\//.test(url.pathname) || /\.woff2$/.test(url.pathname)) {
-    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => keep(req, res))));
+    // stored once per VERSION, so it is checked with the server first: a copy the browser kept from before a new version went out
+    // (GitHub Pages lets it keep files ten minutes) must not be stored as the new one
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req, { cache: 'no-cache' }).then((res) => keep(req, res))));
     return;
   }
   if (/\/images\/cars\//.test(url.pathname)) {

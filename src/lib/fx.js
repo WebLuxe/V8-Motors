@@ -73,8 +73,10 @@ function arrivals() {
   const first = els.filter((el) => { const r = el.getBoundingClientRect(); return r.height && r.top < innerHeight && r.bottom > 0; });
   rise(shown ? [] : first, { delay: curtain ? CURTAIN : 40 });
   first.forEach((el) => seen.add(el));
-  if (still || !('IntersectionObserver' in window)) return;
-  // the rest as they come into view: the moment the first pixel shows, so nothing is ever seen before it fades up
+  // the rest fade up as they come into view, but not on a touch screen: a flick brings several in at once, and each waited its
+  // turn unseen, so cards and panels vanished mid-flick and came back one by one
+  if (still || matchMedia('(hover: none)').matches || !('IntersectionObserver' in window)) return;
+  // the moment the first pixel shows, so nothing is ever seen before it fades up
   const io = new IntersectionObserver((entries) => {
     const now = entries.filter((e) => e.isIntersecting).map((e) => e.target);
     now.forEach((el) => io.unobserve(el));

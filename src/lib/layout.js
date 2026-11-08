@@ -166,7 +166,11 @@ function initCurtain(immersive) {
     label.textContent = name;
     c.classList.add('is-active');
     html.classList.add('leaving'); // the steel stops drawing under the closing curtain, so the curtain has the graphics card to itself
-    gsap.timeline({ onComplete: () => { stash(() => sessionStorage.setItem('v8:curtain', name)); location.assign(url.href); } })
+    // the page changes when the curtain has shut, or after 1.1 s whatever happened to it (it takes 0.75): a tap always gets there
+    let gone = false;
+    const go = () => { if (gone) return; gone = true; stash(() => sessionStorage.setItem('v8:curtain', name)); location.assign(url.href); };
+    setTimeout(go, 1100);
+    gsap.timeline({ onComplete: go })
       .fromTo(L, { xPercent: -101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
       .fromTo(R, { xPercent: 101 }, { xPercent: 0, duration: 0.48, ease: 'power3.inOut', stagger: 0.055 }, 0)
       .fromTo(mid, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out' }, 0.4);
@@ -205,8 +209,9 @@ const cardPhoto = (url) => {
 function initMorph() {
   // the curtain and the browser's own page change must never both run: the browser's lifts the menu bar and a car photo above
   // the closed curtain and fades two curtains into each other. When the curtain carried the change, the browser's is skipped
-  addEventListener('pageswap', (e) => { if (document.querySelector('[data-curtain].is-active')) e.viewTransition?.skipTransition(); });
-  addEventListener('pagereveal', (e) => { if (html.classList.contains('curtain-in')) e.viewTransition?.skipTransition(); });
+  const skip = (vt) => { if (vt) { vt.ready.catch(() => {}); vt.skipTransition(); } };
+  addEventListener('pageswap', (e) => { if (document.querySelector('[data-curtain].is-active')) skip(e.viewTransition); });
+  addEventListener('pagereveal', (e) => { if (html.classList.contains('curtain-in')) skip(e.viewTransition); });
   if (!morphs) return;
   // a catalogue card off screen skips drawing (content-visibility), and on a fresh page so does every card for the first frame,
   // which is the one the browser photographs: the named card is drawn regardless, until the change is over
