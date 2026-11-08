@@ -565,6 +565,8 @@ function findLamp(car) {
  * @param withEngine  also load the V8 for the intro
  * @param tier        'high', 'mid' or 'low': how much this machine's graphics chip can be asked for (src/lib/gpu.js)
  * @param forced      the tier was asked for by hand (?quality=): draw even on a software chip, and remember nothing
+ * @param strict      a phone given the live car (phoneCar in src/lib/gpu.js): a little sharper to start, and below 24 frames a
+ *                    second with nothing left to give up, it hands over to the filmed car
  */
 const BONNET_OPEN = 1.43; // radians. Nearly upright, so it stands clear behind the engine and frames it
 
@@ -584,7 +586,7 @@ const QUALITY = {
 };
 const STEP_KEY = 'v8:3d-steps', STEP_FOR = 3 * 24 * 3600 * 1000; // how far this machine was stepped down, remembered for three days
 
-export async function createStage({ canvas, s, input, onProgress = () => {}, onTap = () => {}, onSign = () => {}, onTooSlow = () => {}, withEngine = false, tier = 'high', forced = false }) {
+export async function createStage({ canvas, s, input, onProgress = () => {}, onTap = () => {}, onSign = () => {}, onTooSlow = () => {}, withEngine = false, tier = 'high', forced = false, strict = false }) {
   const phone = matchMedia('(pointer: coarse)').matches;
   const CAP = import.meta.env.MODE === 'dbg' ? window.__capture : null; // only for rendering the phone film: see scripts/film.mjs
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: !!CAP?.clear, powerPreference: 'high-performance', stencil: false });
@@ -602,7 +604,8 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
   // a laptop's small sharp screen is still crisp; on low, the screen's own pixels. Never past Q.pixels in all, either
   const MAX_PIXELS = CAP ? 60e6 : Q.pixels;
   const ratio = devicePixelRatio || 1;
-  let dpr = CAP ? CAP.dpr : level === 'low' ? 1 : level === 'mid' ? Math.min(ratio, 1.25) : phone ? Math.min(ratio, 2) : Math.min(Math.max(ratio, 1.5), 2);
+  // (a phone allowed the live car is held to it more strictly, below, so it can start a little sharper than a laptop's mid)
+  let dpr = CAP ? CAP.dpr : level === 'low' ? 1 : level === 'mid' ? Math.min(ratio, strict ? 1.5 : 1.25) : phone ? Math.min(ratio, 2) : Math.min(Math.max(ratio, 1.5), 2);
   renderer.setPixelRatio(dpr);
 
   // ---- downloads
@@ -978,7 +981,9 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
     if (broken) { lowSpans = softSpans = 0; return; }
     lowSpans = fps < 27 ? lowSpans + 1 : 0;
     softSpans = fps < 40 ? softSpans + 1 : 0;
-    if (lowSpans >= 2 && fps < 10) { // crawling: every step at once, and if there is nothing left to give, the filmed car
+    // crawling: every step at once, and if there is nothing left to give, the filmed car. A phone (strict) is held to more than a
+    // computer: below 24 frames a second the car would judder in the hand, and the filmed car is the better of the two
+    if (lowSpans >= 2 && fps < (strict ? 24 : 10)) {
       lowSpans = softSpans = 0;
       let gave = false;
       while (stepDown()) gave = true;
@@ -1028,7 +1033,8 @@ export async function createStage({ canvas, s, input, onProgress = () => {}, onT
 
     const f = s.frame;
     // ---- the driver
-    if (!dragging) {
+    if (CAP && CAP.turn !== undefined) { spin = CAP.turn; spinV = 0; } // recording the car turned by hand, an exact angle a frame (scripts/trick-films.mjs)
+    else if (!dragging) {
       spin += spinV;
       spinV *= 0.94;
       if (Math.abs(spinV) < 0.0002) spinV = 0;

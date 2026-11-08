@@ -147,6 +147,9 @@ html { background: #d3d9e0; scrollbar-color: #9aa3ae #d3d9e0; }
   /* phones and tablets: the filmed loop of the car, over the still photo once it plays (see heroLoop in src/pages/home.js) */
   .hero-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; opacity: 0; transition: opacity .6s ease; }
   .hero-loop.is-on { opacity: 1; }
+  /* its tricks and its turn, recorded from the same scene, laid straight over it: a cut, not a fade (heroTricks in src/pages/home.js) */
+  :is(.hero-trick, .hero-turn) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; opacity: 0; }
+  :is(.hero-trick, .hero-turn).is-on { opacity: 1; }
   .hero-shade { background: linear-gradient(180deg, rgb(19 18 18 / .55) 0%, rgb(19 18 18 / 0) 22%); }
   .hero-flash { display: none; }
   .hero-moves { top: auto; right: auto; left: 50%; bottom: clamp(1.5rem, 5.5vh, 3.25rem); translate: -50% 0; gap: var(--s3); transition: opacity .25s ease; }

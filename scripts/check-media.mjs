@@ -38,6 +38,8 @@ function read(file) {
     Object.assign(out, {
       w, h, codec: entry?.type,
       level: !config ? null : config.type === 'avcC' ? b[config.start + 3] / 10 : b[config.start + 12] / 30,
+      // H.264: 66 baseline, 77 main, 100 high. HEVC: 1 main (2 is main 10, 3 still picture, 4 the range extensions)
+      profile: !config ? null : config.type === 'avcC' ? b[config.start + 1] : b[config.start + 1] & 31,
     });
   }
   return out;
@@ -52,6 +54,9 @@ for (const file of walk(root).filter((p) => p.toLowerCase().endsWith('.mp4'))) {
     if (Math.max(m.w, m.h) > LONG || Math.min(m.w, m.h) > SHORT) problems.push(`${m.w} x ${m.h} is bigger than many phones can play (at most ${LONG} x ${SHORT}, either way up)`);
     if (m.level == null) problems.push(`its level can't be read (${m.codec})`);
     else if (m.level > LEVEL + 1e-6) problems.push(`level ${m.level} is above ${LEVEL}, which many phones refuse (x264: -level 4.1 -refs 4; x265: level-idc=41 or lower)`);
+    const avc = m.codec === 'avc1' || m.codec === 'avc3';
+    if (m.profile != null && !(avc ? [66, 77, 100].includes(m.profile) : m.profile === 1))
+      problems.push(`profile ${m.profile} is one phones don't play (${avc ? 'use baseline, main or high' : 'HEVC must be Main: x265 picks another for a film of nothing but keyframes, so use H.264 for that'})`);
   }
   if (!m.streaming) problems.push('it only starts once it has downloaded completely (encode with -movflags +faststart)');
   const name = relative(root, file).replaceAll('\\', '/');

@@ -29,3 +29,26 @@ export function gpuTier(chip, cores, memory, apple) {
   if (!name) return (cores || 8) >= 8 && (memory || 8) > 4 ? 'high' : 'mid';
   return (memory || 8) <= 4 ? 'mid' : 'high';
 }
+
+/**
+ * Can this phone or tablet draw the live 3D car smoothly once its intro film has played (src/pages/home.js)? Then it gets what a
+ * computer gets: turn the car with a finger, Spin it, Make it dance, Light show. Measured on real phones: a Galaxy A25's Mali-G68
+ * holds 52 to 60 frames a second resting, spinning and being dragged round; a Galaxy A23's Adreno 610 only about 30, so a phone
+ * like that keeps the filmed car. A phone slower than its chip promises steps down while it runs, and at worst goes back to the
+ * filmed car (src/lib/rover3d.js, strict). Plain ES5, pasted into index.html like gpuTier above.
+ *
+ *   Apple GPU         every iPhone and iPad a current iOS runs on
+ *   Mali              G68, G77, G78 and every three-digit one from G610 up; not G31 to G57, G71, G72 or G76
+ *   Immortalis        all
+ *   Adreno            630 and up (flagships since 2018) and every 7xx; not 610 to 620
+ */
+export function phoneCar(chip, memory) {
+  var name = String(chip || '');
+  if ((memory || 8) <= 3) return false;
+  if (/apple gpu|immortalis/i.test(name)) return true;
+  var mali = /mali-g(\d+)/i.exec(name);
+  if (mali) { var g = +mali[1]; return g === 68 || g === 77 || g === 78 || g >= 610; }
+  var adreno = /adreno[^\d]*(\d+)/i.exec(name);
+  if (adreno) { var a = +adreno[1]; return a >= 630; }
+  return false;
+}

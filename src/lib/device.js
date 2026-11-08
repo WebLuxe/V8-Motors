@@ -1,6 +1,6 @@
 /** Phones that can't be asked for much, judged by their memory and their processor. iPhones and iPads tell Safari they have
     very few cores whatever is really inside them, so for them the count means nothing and they are not held back by it. */
-import { gpuTier } from './gpu.js';
+import { gpuTier, phoneCar } from './gpu.js';
 
 const apple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const appleCores = apple || /Macintosh/.test(navigator.userAgent); // Safari on a Mac doesn't give its real core count either
@@ -50,6 +50,9 @@ export function gpuInfo() {
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
   } catch { tier = 'none'; }
-  const fits = forcedQuality ? forcedQuality !== 'low' : matchMedia('(hover: hover) and (pointer: fine)').matches && slowLevel < 1;
-  return (window.__v8gpu = { chip, tier, forced: forcedQuality, live: fits && (tier === 'high' || tier === 'mid') });
+  const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const fits = forcedQuality ? forcedQuality !== 'low' : fine && slowLevel < 1;
+  // a phone or tablet: the live car once its intro film has played, where its chip can draw it smoothly (see index.html)
+  const phone3d = !fine && !forcedQuality && slowLevel < 1 && tier !== 'none' && phoneCar(chip, navigator.deviceMemory);
+  return (window.__v8gpu = { chip, tier, forced: forcedQuality, live: fits && (tier === 'high' || tier === 'mid'), phone3d });
 }

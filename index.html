@@ -20,19 +20,24 @@
         if (qm && qm[1] === 'auto') sessionStorage.removeItem('v8:quality'); else if (qm) sessionStorage.setItem('v8:quality', qm[1]);
         forced = sessionStorage.getItem('v8:quality');
       } catch (e) {}
-      var live = !matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData) && (forced ? forced !== 'low' : fine && !slow);
+      var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var live = !still && !(navigator.connection && navigator.connection.saveData) && (forced ? forced !== 'low' : fine && !slow);
+      // a phone or tablet always plays its intro as a film, and then gets the live car if its graphics chip can draw it smoothly
+      // (phoneCar in src/lib/gpu.js); otherwise the filmed car
+      var phone = !still && !fine && !slow && !forced;
       // and only on a graphics chip that can draw it smoothly (src/lib/gpu.js, pasted in below by vite.config.js). Without one, or with an
       // older or phone-class chip, the computer plays the films instead, which were rendered from the very same scene
       /*@gpuTier*/
       var chip = '', tier = 'none';
-      if (live) try {
+      if (live || phone) try {
         var gc = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true }), gi = gc && gc.getExtension('WEBGL_debug_renderer_info');
         chip = gi ? String(gc.getParameter(gi.UNMASKED_RENDERER_WEBGL)) : '';
         tier = !gc ? 'none' : forced || gpuTier(chip, navigator.hardwareConcurrency, navigator.deviceMemory, /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent));
         if (gc && gc.getExtension('WEBGL_lose_context')) gc.getExtension('WEBGL_lose_context').loseContext();
       } catch (e) { tier = 'none'; }
       live = live && (tier === 'high' || tier === 'mid');
-      window.__v8gpu = { chip: chip, tier: tier, forced: forced, live: live }; // src/pages/home.js and src/lib/rover3d.js go by this, rather than asking again
+      var phone3d = phone && tier !== 'none' && phoneCar(chip, navigator.deviceMemory);
+      window.__v8gpu = { chip: chip, tier: tier, forced: forced, live: live, phone3d: phone3d }; // src/pages/home.js and src/lib/rover3d.js go by this, rather than asking again
       // where the 3D car will run, the page keeps its stage dark until the car is ready. The still is framed differently,
       // so showing it first would look like the car jumping when the live one takes over
       if (live) document.documentElement.classList.add('has-3d');

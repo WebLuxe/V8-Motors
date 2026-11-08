@@ -61,16 +61,19 @@ const capture = import.meta.env.MODE === 'dbg' && !!window.__capture; // renderi
 const moving3d = !reduced;
 // the live 3D car: a computer whose graphics chip can draw it smoothly (above). Everything else plays the films of it
 const live3d = moving3d && (capture || gpu.live);
+// a phone or tablet whose graphics chip can draw it too (phoneCar in src/lib/gpu.js): the intro is still the film, and then the
+// live car takes over, to turn with a finger and do its tricks. One that can't keep up after all gets the filmed car (onTooSlow)
+const phone3d = moving3d && !live3d && !capture && !!gpu.phone3d;
 const useFilm = playIntro && moving3d && !live3d;
-const useLoop = moving3d && !live3d;
-const wantStage = live3d;
+const useLoop = moving3d && !live3d && !phone3d;
+const wantStage = live3d || phone3d;
 let stage = null, tooSlow = false, modelDone = 0, onModel = () => {};
 // the film is fetched first: it has to play without a pause, and the filmed loop of the car isn't needed until it ends
 let filmFetched = () => {};
 const filmFirst = useFilm ? new Promise((done) => { filmFetched = done; setTimeout(done, 20000); }) : null;
 const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirst).then(() => import('../lib/rover3d.js'))
   .then(({ createStage }) => createStage({
-    canvas, s, input: $('.hero'), tier: gpu.tier, forced: !!gpu.forced,
+    canvas, s, input: $('.hero'), tier: phone3d ? 'mid' : gpu.tier, forced: !!gpu.forced, strict: phone3d,
     onProgress: (v) => { modelDone = v * 0.9; onModel(modelDone); }, // the last tenth is getting it ready to draw
     withEngine: playIntro && !useFilm,
     onTap: () => flashLights(0),
@@ -93,15 +96,21 @@ const stageReady = !wantStage ? Promise.resolve(null) : Promise.resolve(filmFirs
     gsap.ticker.add(() => st.draw());
     return st;
   })
-  .catch((e) => { console.warn('3D car unavailable, showing the still', e); document.documentElement.classList.remove('has-3d'); modelDone = 1; onModel(1); return null; });
+  .catch((e) => {
+    console.warn('3D car unavailable, showing the still', e);
+    document.documentElement.classList.remove('has-3d');
+    modelDone = 1; onModel(1);
+    if (phone3d) heroLoop(); // a phone that was to have the live car: the filmed one instead
+    return null;
+  });
 if (!wantStage) { modelDone = 1; document.documentElement.classList.remove('has-3d'); }
 // the loop comes in once the film (if there is one) has arrived, so the two never fight over a slow connection
 const loop = useLoop ? Promise.resolve(filmFirst).then(() => heroLoop({ hold: useFilm })) : Promise.resolve(null);
 
-/** The filmed car: upright or sideways to suit the screen, in the smaller format where the device plays it. It fades in over the
-    still photo once it is really playing, and rests while it is scrolled out of sight. Held (not playing) while the intro film
-    runs on top of it, so the device never decodes two films at once: release() starts it, from its first frame, the hero pose the
-    film ends on, and shows it at once so the film can fade straight into it. */
+/** The filmed car: upright or sideways to suit the screen, in the smaller format where the device plays it. Its first frame shows
+    at once as a picture (the poster) and the film plays on over it; it rests while it is scrolled out of sight. Held (not playing)
+    while the intro film runs on top of it: release() starts it from that first frame, the hero pose the film ends on, so the film
+    can fade straight into it. With it come its tricks and its turn (heroTricks). */
 function heroLoop({ hold = false } = {}) {
   let held = hold;
   const v = document.createElement('video');
@@ -111,12 +120,18 @@ function heroLoop({ hold = false } = {}) {
   v.setAttribute('aria-hidden', 'true');
   let hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably', want = '';
   const pick = () => {
-    const url = new URL(LOOP(innerHeight > innerWidth ? 'portrait' : 'landscape', hevc), document.baseURI).href;
+    const shape = innerHeight > innerWidth ? 'portrait' : 'landscape';
+    const url = new URL(LOOP(shape, hevc), document.baseURI).href;
     if (want === url) return;
     want = url;
+    // its first frame as a picture (37 KB): there at once, under the film as it starts, and all a phone too short of memory to
+    // play one more film shows, the car standing in its hall rather than nothing
+    v.poster = new URL(`media/hero/loop-${shape}.webp`, document.baseURI).href;
     // held for the end of the intro: downloaded whole meanwhile, so it is there the moment the film ends, whatever the browser
-    // (some fetch nothing of a video that isn't playing yet). Otherwise it simply streams
-    const use = (src) => { if (want !== url) return; v.src = src; if (!held) v.play().catch(() => {}); };
+    // (some fetch nothing of a video that isn't playing yet). Otherwise it simply streams. A download that hasn't arrived by the
+    // end of the intro (one stalled connection was enough, on a real phone) isn't waited for: it streams then (release, below),
+    // and the download, when it comes, is let go
+    const use = (src) => { if (want !== url || (src !== url && !held && v.getAttribute('src'))) return; v.src = src; if (!held) v.play().catch(() => {}); };
     if (held) download(url).then((b) => use(URL.createObjectURL(b)), () => use(url));
     else use(url);
   };
@@ -127,19 +142,180 @@ function heroLoop({ hold = false } = {}) {
   });
   canvas.after(v);
   pick();
+  v.classList.add('is-on'); // its picture shows straight away, and the film plays on over it (they are the same frame)
   matchMedia('(orientation: portrait)').addEventListener('change', pick);
   let seen = true;
-  new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen && !held) v.play().catch(() => {}); else v.pause(); }).observe(media);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && seen && !held) v.play().catch(() => {}); });
+  // (resting: a trick or the turn is on top of it, see heroTricks)
+  new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen && !held && !v.resting) v.play().catch(() => {}); else v.pause(); }).observe(media);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && seen && !held && !v.resting) v.play().catch(() => {}); });
   v.release = () => {
     if (!held) return;
     held = false;
+    if (!v.getAttribute('src')) v.src = want; // its download hasn't arrived: streamed, rather than nothing on screen
     v.style.transition = 'none';
     v.classList.add('is-on');
     v.currentTime = 0;
     v.play().catch(() => {});
   };
+  v.hevc = () => hevc;
+  if (!reduced) heroTricks(v);
   return v;
+}
+
+/* ================================================================== the filmed car's tricks
+   Where the car is a film rather than drawn live, it does the same tricks and turns the same way, from films recorded off the very
+   same scene (scripts/trick-films.mjs): the three buttons each play theirs, and a sideways drag turns the car through a full
+   circle recorded a few degrees at a time, coasting on when let go and staying turned, as the live car does. Every trick starts
+   on the hero pose and ends on it, which is exactly where the loop starts, so the loop picks up from its first frame without a
+   jump. They are downloaded whole once the loop plays (see prepareFilm for why), so a tap plays one at once. */
+const TURN_FRAMES = 120, TURN_FPS = 30;
+let memoryPlays = true; // does this browser play a film from memory? The intro film finds out first (filmReady)
+function heroTricks(loopVideo) {
+  const box = $('[data-hero-moves]'), hero = $('.hero');
+  if (!box || heroTricks.on) return;
+  heroTricks.on = true;
+  const shape = () => (innerHeight > innerWidth ? 'portrait' : 'landscape');
+  // (the turn is H.264 everywhere: HEVC made of nothing but keyframes is a profile phones don't play)
+  const url = (name) => new URL(`media/hero/${name}-${shape()}${loopVideo.hevc() && name !== 'turn' ? '-hevc' : ''}.mp4`, document.baseURI).href;
+  // each film downloaded whole, kept in memory (mem), with its address to stream it from (net) for a browser that won't play a
+  // film from memory: the first time one doesn't start from memory, all of them stream from then on (memoryOk)
+  const got = {};
+  let memoryOk = memoryPlays; // what the intro film found out (filmReady), if there was one
+  const get = (name) => (got[name + shape()] ||= download(url(name)).then((b) => ({ mem: URL.createObjectURL(b), net: url(name) }), () => ({ mem: null, net: url(name) })));
+  const pick = (f) => (memoryOk && f.mem ? f.mem : f.net);
+  const film = (cls) => {
+    const v = document.createElement('video');
+    v.className = cls;
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.disablePictureInPicture = true;
+    for (const a of ['muted', 'playsinline']) v.setAttribute(a, '');
+    v.setAttribute('aria-hidden', 'true');
+    loopVideo.after(v);
+    return v;
+  };
+  const trick = film('hero-trick'), turn = film('hero-turn');
+  let busy = false, angle = 0, turnedNow = false;
+
+  // the loop rests (unseen, so not decoded) while a trick or the turn is on top, and picks up from its first frame, which is the
+  // very picture they end on, so the hand back is invisible
+  const rest = () => { loopVideo.resting = true; loopVideo.pause(); };
+  // a film done with lets go of its file, so a phone never decodes more than it shows (a weak one shares out few decoders)
+  const free = (v) => { v.removeAttribute('src'); v.load(); };
+  const backToLoop = (from) => {
+    loopVideo.resting = false;
+    loopVideo.currentTime = 0;
+    loopVideo.play().catch(() => setTimeout(() => { if (!loopVideo.resting) loopVideo.play().catch(() => {}); }, 300)); // refused once (a browser busy swapping films): again
+    gsap.to(from, { opacity: 0, duration: 0.25, delay: 0.08, ease: 'sine.inOut', onComplete: () => { from.classList.remove('is-on'); gsap.set(from, { clearProps: 'opacity' }); free(from); } });
+  };
+  // the car turned round by a finger, shown at the nearest recorded angle
+  const showAngle = () => {
+    const n = ((Math.round((angle / (Math.PI * 2)) * TURN_FRAMES) % TURN_FRAMES) + TURN_FRAMES) % TURN_FRAMES;
+    const t = (n + 0.5) / TURN_FPS;
+    if (Math.abs(turn.currentTime - t) > 0.01) turn.currentTime = t;
+  };
+  const toTurn = () => {
+    if (turnedNow) return true;
+    if (!turn.src || turn.readyState < 2) return false; // not here yet: the car stays as it is
+    turnedNow = true;
+    showAngle();
+    turn.classList.add('is-on');
+    rest();
+    return true;
+  };
+  // back to facing you, the short way round, and only then the loop: never two cars on screen at once
+  let leaving = false;
+  const leaveTurn = (at = 0.45) => {
+    if (!turnedNow || leaving) return;
+    leaving = true;
+    cancelAnimationFrame(coast);
+    const home = Math.round(angle / (Math.PI * 2)) * Math.PI * 2;
+    gsap.to({ a: angle }, { a: home, duration: at, ease: 'sine.inOut', onUpdate() { angle = this.targets()[0].a; showAngle(); },
+      onComplete: () => { leaving = false; turnedNow = false; angle = 0; backToLoop(turn); } });
+  };
+
+  const play = (name) => {
+    if (busy || scrollY > 40 || document.documentElement.classList.contains('play-intro')) return;
+    busy = true;
+    get(`trick-${name}`).then((f) => roll(f, pick(f)));
+  };
+  const roll = (f, src) => {
+    let started = false;
+    trick.onplaying = () => {
+      started = true;
+      trick.onplaying = null;
+      trick.classList.add('is-on'); // a cut, straight onto its first frame
+      rest();
+      if (turnedNow) { turnedNow = false; angle = 0; turn.classList.remove('is-on'); }
+    };
+    trick.onended = () => { trick.onended = null; busy = false; backToLoop(trick); };
+    trick.src = src;
+    trick.play().catch(() => {});
+    // from memory and not playing two seconds on: this browser doesn't play films from memory, so streamed, now and from now on.
+    // Streamed and still nothing after eight: the tap is let go of quietly, and the loop never stopped
+    setTimeout(() => {
+      if (started || trick.src !== src) return;
+      if (src === f.mem) { memoryOk = false; roll(f, f.net); } else { trick.onplaying = trick.onended = null; busy = false; }
+    }, src === f.mem ? 2000 : 8000);
+  };
+
+  // the turn's film is only given to its player when a finger comes down on the car, and let go of once it faces you again
+  const turnFilm = () => {
+    if (turn.getAttribute('src') || turnFilm.asked) return;
+    turnFilm.asked = true;
+    get('turn').then((f) => {
+      turnFilm.asked = false;
+      const src = pick(f);
+      turn.src = src;
+      // from memory and no picture three seconds on: streamed instead (an iPhone shows none until a touch: see start)
+      if (src === f.mem) setTimeout(() => { if (turn.src === src && turn.readyState < 2) { memoryOk = false; turn.src = f.net; } }, 3000);
+    });
+  };
+
+  // a sideways drag turns it, the way rover3d.js turns the live car (the same speed for the same finger), and it coasts on after
+  let dragging = false, x0 = 0, xs = 0, v = 0, last = 0, coast = 0;
+  hero.addEventListener('pointerdown', (e) => {
+    if (busy || e.button || scrollY > 40 || e.target.closest?.('a, button, input, select, label, .gate')) return;
+    dragging = true; x0 = xs = e.clientX; v = 0; last = performance.now(); cancelAnimationFrame(coast);
+    turnFilm();
+  });
+  addEventListener('pointermove', (e) => {
+    if (!dragging || (!turnedNow && Math.abs(e.clientX - xs) < 8) || !toTurn()) return;
+    const now = performance.now(), a = ((e.clientX - x0) / Math.min(innerWidth, 900)) * Math.PI * 1.5;
+    x0 = e.clientX;
+    angle += a;
+    v = (a / Math.max(4, now - last)) * 16;
+    last = now;
+    showAngle();
+  }, { passive: true });
+  const release = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (!turnedNow) return;
+    const step = () => { angle += v; v *= 0.94; showAngle(); if (Math.abs(v) > 0.0002) coast = requestAnimationFrame(step); };
+    coast = requestAnimationFrame(step);
+  };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+  // scrolled on, it turns back to face you, as the live car does, and the loop carries on
+  addEventListener('scroll', () => { if (scrollY > 6 && turnedNow && !dragging) leaveTurn(); }, { passive: true });
+
+  const start = () => {
+    box.hidden = false;
+    gsap.from(box.children, { opacity: 0, y: 10, duration: 0.7, delay: 0.6, stagger: 0.08, ease: 'expo.out', clearProps: 'opacity,transform' });
+    box.addEventListener('click', (e) => { const b = e.target.closest('[data-move]'); if (b) play(b.dataset.move); });
+    const away = () => box.classList.toggle('is-away', scrollY > 30);
+    addEventListener('scroll', away, { passive: true });
+    away();
+    // all four, one after another, once the loop is really playing, so they never hold it up: the tricks first, they are what a
+    // visitor taps
+    const fetchAll = () => ['trick-spin', 'trick-dance', 'trick-lights', 'turn'].reduce((prev, name) => prev.then(() => get(name)), Promise.resolve());
+    if (!loopVideo.paused && loopVideo.readyState >= 3) fetchAll(); else loopVideo.addEventListener('playing', fetchAll, { once: true });
+    // turned sideways (or back): the turn recorded in that shape, the next time a finger asks for it
+    matchMedia('(orientation: portrait)').addEventListener('change', () => { if (turnedNow) leaveTurn(0.01); else free(turn); });
+    // an iPhone loads nothing of a video until a touch asks for it: the first touch on the car does
+    hero.addEventListener('touchend', () => { if (turn.src && turn.readyState < 2) turn.play().then(() => turn.pause(), () => {}); }, { passive: true });
+  };
+  if (document.documentElement.classList.contains('play-intro')) addEventListener('v8:intro-done', start, { once: true });
+  else start();
 }
 
 setupFinder();
@@ -349,7 +525,7 @@ function filmReady(v, gate) {
     const finish = (ok) => { if (done) return; done = true; clearInterval(timer); gate.classList.remove('is-waiting'); resolve(ok); };
     const check = () => {
       if (v.failed || performance.now() - since > 60000) return finish(false);
-      if (!v.paused && v.currentTime > 0.02 && v.readyState >= 2) return finish(true);
+      if (!v.paused && v.currentTime > 0.02 && v.readyState >= 2) { memoryPlays = v.src.startsWith('blob:'); return finish(true); }
       if (v.ready) {
         if (v.paused && !asked) { asked = true; playFilm(v, true).then(() => { asked = false; }); }
         if (v.askedAt && performance.now() - v.askedAt > (v.whole ? 3000 : 12000)) v.next();
@@ -793,6 +969,7 @@ const PLAY = {
     return tl;
   },
 };
+if (import.meta.env.MODE === 'dbg') window.__play = PLAY; // scripts/trick-films.mjs records each of them for the phones that play films
 let moving = null, stopStunt = () => {}, signBusy = false;
 async function stunt(name) {
   if (reduced) return;

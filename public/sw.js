@@ -1,7 +1,8 @@
 // Keeps the site's files close to the visitor. Pages always ask the network first, so a new version shows up straight away and an
 // old copy only serves when there is no connection. Files with a fingerprint in their name never change once
 // published, so they come straight from here. Stock photos, models and the intro show at once and refresh quietly behind the scenes.
-const VERSION = 'v8motors-2';
+// one up whenever a file kept here changes under the same name (the models, media/hero's films): the old copies are cleared then
+const VERSION = 'v8motors-3';
 const ONLY_OURS = /^v8motors-/; // this address is shared with other sites, so only ever clear our own caches
 const cache = () => caches.open(VERSION);
 
