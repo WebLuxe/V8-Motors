@@ -14,6 +14,8 @@ if (missing.length) {
   console.error(`Not deploying: ${missing.length} car photos are missing from ${dist}/ (first: ${missing[0]}). Run npm run sync where the stock API can be reached, then deploy again.`);
   process.exit(1);
 }
+// and a film too big for phones' video chips never goes live: they show nothing at all (it stops here)
+run(`node scripts/check-media.mjs ${dist}/media`);
 
 writeFileSync(`${dist}/.nojekyll`, ''); // let Pages serve files as-is
 rmSync(`${dist}/.git`, { recursive: true, force: true });

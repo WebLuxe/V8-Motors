@@ -442,8 +442,18 @@ html { background: #d3d9e0; scrollbar-color: #9aa3ae #d3d9e0; }
     [data-grid]:not([data-view="list"]) .car { padding: 6px 6px var(--s2); border-radius: 18px; }
     [data-grid]:not([data-view="list"]) .car-info { padding: var(--s2) var(--s1) 0; }
     [data-grid]:not([data-view="list"]) .car-title { margin-top: 0; }
-    [data-grid]:not([data-view="list"]) .car-plate { font-size: 1.125rem; }
+    [data-grid]:not([data-view="list"]) .car-plate { font-size: 1.125rem; padding: 0; white-space: nowrap; } /* in line with the name above it, on one line */
     [data-grid]:not([data-view="list"]) .car-foot { flex-direction: column; align-items: flex-start; }
+    /* the badge and the heart share a photo only about 150px wide: both as small as in the list, so they never meet */
+    [data-grid]:not([data-view="list"]) .car-tools { top: 12px; right: 12px; }
+    [data-grid]:not([data-view="list"]) .car-tools .save { width: 2.25rem; height: 2.25rem; background: rgb(255 255 255 / .78); }
+    [data-grid]:not([data-view="list"]) .car-status { left: 5px; top: 5px; padding: .15rem .4rem; font-size: .6875rem; white-space: nowrap; }
+  }
+  @media (max-width: 359px) { /* the narrowest phones: photos only about 120px wide */
+    [data-grid]:not([data-view="list"]) .car-tools { top: 10px; right: 10px; }
+    [data-grid]:not([data-view="list"]) .car-tools .save { width: 2rem; height: 2rem; }
+    [data-grid]:not([data-view="list"]) .car-status { left: 4px; top: 4px; padding: .1rem .3rem; font-size: .625rem; }
+    [data-grid]:not([data-view="list"]) .car-plate { font-size: .9375rem; } /* Rs 1,400,000 still fits */
   }
 
   /* ---------------------------------------------------------------- the catalogue: the filters are a whole panel, always on screen.

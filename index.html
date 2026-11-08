@@ -53,6 +53,14 @@
         if (innerWidth >= 700) (live ? ['media/intro/engine.mp3', 'models/engine.glb', 'models/bay.glb'] : ['media/intro/engine.mp3']).forEach(function (f, i) {
           var l = document.createElement('link'); l.rel = 'preload'; l.as = 'fetch'; l.href = f; l.crossOrigin = 'anonymous'; if (i) l.fetchPriority = 'low'; document.head.appendChild(l);
         });
+        // every device without the live car plays the intro as a film, which the start button waits for: it is asked for at once,
+        // while the page is still arriving (src/pages/home.js picks the same file: FILMS and prepareFilm)
+        if (!live && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          var fv = document.createElement('video').canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably', fl = document.createElement('link');
+          fl.rel = 'preload'; fl.as = 'fetch'; fl.crossOrigin = 'anonymous';
+          fl.href = 'media/intro/film' + (innerHeight > innerWidth ? '' : '-wide') + (fv ? '-hevc' : '') + '.mp4';
+          document.head.appendChild(fl);
+        }
         // a press that comes before the page's code has arrived is kept, not lost: the intro starts from it when it can
         document.addEventListener('click', function (e) {
           var b = e.target.closest && e.target.closest('[data-ignite]');

@@ -53,11 +53,12 @@ if (playIntro) {
 /* ================================================================== the car
    The Range Rover is drawn live by src/lib/rover3d.js, which brings three.js with it, so it is loaded on its own and
    never holds up the page. Everything here animates one object of numbers, `s`; that file draws what they say.
-   With reduced motion, data saver, no WebGL or a failed download, the still of the same car stays on screen. */
+   With reduced motion, no WebGL or a failed download, the still of the same car stays on screen. */
 const s = { ...(playIntro ? DARK : HERO) };
 if (import.meta.env.MODE === 'dbg') { window.__s = s; window.__gsap = gsap; }
 const capture = import.meta.env.MODE === 'dbg' && !!window.__capture; // rendering the films themselves: always the live car
-const moving3d = !reduced && !navigator.connection?.saveData; // reduced motion and data saver keep the still photo
+// reduced motion keeps the still photo. Data Saver doesn't: the intro is what the start button is for, and its film is about 2 MB
+const moving3d = !reduced;
 // the live 3D car: a computer whose graphics chip can draw it smoothly (above). Everything else plays the films of it
 const live3d = moving3d && (capture || gpu.live);
 const useFilm = playIntro && moving3d && !live3d;
@@ -108,13 +109,22 @@ function heroLoop({ hold = false } = {}) {
   v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; v.disablePictureInPicture = true;
   for (const a of ['muted', 'playsinline', 'loop']) v.setAttribute(a, '');
   v.setAttribute('aria-hidden', 'true');
-  const hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably';
+  let hevc = v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably', want = '';
   const pick = () => {
-    const src = new URL(LOOP(innerHeight > innerWidth ? 'portrait' : 'landscape', hevc), document.baseURI).href;
-    if (v.src !== src) { v.src = src; if (!held) v.play().catch(() => {}); }
+    const url = new URL(LOOP(innerHeight > innerWidth ? 'portrait' : 'landscape', hevc), document.baseURI).href;
+    if (want === url) return;
+    want = url;
+    // held for the end of the intro: downloaded whole meanwhile, so it is there the moment the film ends, whatever the browser
+    // (some fetch nothing of a video that isn't playing yet). Otherwise it simply streams
+    const use = (src) => { if (want !== url) return; v.src = src; if (!held) v.play().catch(() => {}); };
+    if (held) download(url).then((b) => use(URL.createObjectURL(b)), () => use(url));
+    else use(url);
   };
   v.addEventListener('playing', () => v.classList.add('is-on'), { once: true });
-  v.addEventListener('error', () => { if (hevc && v.src.includes('-hevc')) v.src = v.src.replace('-hevc', ''); }); // said it could, couldn't
+  v.addEventListener('error', () => {
+    if (v.src.startsWith('blob:')) { v.src = want; if (!held) v.play().catch(() => {}); } // won't play it from memory: streamed instead
+    else if (hevc) { hevc = false; pick(); } // said it could, and couldn't: the file every phone plays (and from now on, sideways too)
+  });
   canvas.after(v);
   pick();
   matchMedia('(orientation: portrait)').addEventListener('change', pick);
@@ -253,13 +263,20 @@ function envelope(buffer) {
   return out;
 }
 
-/** Fetch the phone film while the visitor looks at the start button, which lights up once it can play right through without
-    stopping. iPhones fetch little or nothing before the tap, so there is nothing to wait for on those. */
+/** The film for this screen, downloaded by the page itself while the visitor looks at the start button, then played from memory.
+    A browser fetches little or nothing of a video that isn't playing yet (an iPhone nothing at all, Edge on Android with Data Saver
+    on only its first second), so waiting for the video to load itself could last for ever: the button sat at "Warming up · 1%" and
+    the intro was skipped. A plain download has no such limits. Its progress fills the button's ring, the button lights up once it
+    is all here, and from then on nothing can stall the film (index.html asks for it before this code has even arrived).
+    Each way of playing it is tried in turn until one works: the smaller (HEVC) file where the device says it plays it, then the
+    one every phone plays; each from memory first, then streamed the usual way, for a browser that won't play a film from memory
+    or a download that fails. v.next() moves on to the next way: on an error, or from filmReady when one never starts. */
 function prepareFilm(onProgress = () => {}) {
   const v = document.createElement('video');
-  const file = (name) => new URL(name, document.baseURI).href;
+  const files = [...(v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably' ? [FILM.small] : []), FILM.src].map((f) => new URL(f, document.baseURI).href);
+  const ways = files.flatMap((url) => [{ url, whole: true }, { url, whole: false }]);
+  let at = -1;
   v.className = 'hero-film';
-  v.src = file(v.canPlayType('video/mp4; codecs="hvc1.1.6.L120.B0"') === 'probably' ? FILM.small : FILM.src); // the smaller file, where the phone can play it
   v.playsInline = true;
   v.muted = true;
   v.preload = 'auto';
@@ -267,77 +284,81 @@ function prepareFilm(onProgress = () => {}) {
   v.setAttribute('playsinline', '');
   v.setAttribute('aria-hidden', 'true');
   dark.before(v);
-  v.began = performance.now();
-  const report = () => {
-    const { through, part } = filmAhead(v);
-    onProgress(through ? 1 : part);
-    if (v.buffered.length && v.duration && v.buffered.end(v.buffered.length - 1) >= v.duration - 0.5) filmFetched();
+  // (not "part": a video element already has one, for styling)
+  v.got = 0; // how much of the file is here, 0..1
+  v.ready = false; // it has its file and can be played
+  v.next = () => {
+    if (++at >= ways.length) { v.ready = false; v.failed = true; onProgress(1); filmFetched(); return; }
+    const mine = at, { url, whole } = ways[at];
+    v.ready = false;
+    v.whole = whole;
+    v.moved = performance.now();
+    const use = (src) => { if (mine !== at) return; v.src = src; v.ready = true; v.askedAt = 0; onProgress(1); filmFetched(); };
+    if (!whole) return use(url);
+    v.got = 0;
+    download(url, (p) => { if (mine !== at) return; v.got = p; v.moved = performance.now(); onProgress(Math.min(0.99, p)); })
+      .then((blob) => use(URL.createObjectURL(blob)), () => { if (mine === at) v.next(); });
   };
-  const paused = () => { onProgress(1); filmFetched(); }; // the browser has taken all it means to before the tap
-  v.addEventListener('progress', report);
-  v.addEventListener('suspend', paused);
-  v.addEventListener('error', () => {
-    if (v.src !== file(FILM.src)) {
-      // it said it could play the smaller file and couldn't: the one every phone plays, and if it was already asked to play,
-      // it carries on (filmReady waits for it)
-      v.src = file(FILM.src);
-      v.began = performance.now();
-      v.load();
-    } else { v.failed = true; paused(); }
-  });
-  if (/iPhone|iPod/.test(navigator.userAgent)) onProgress(1);
-  v.load();
+  v.addEventListener('error', () => { if (v.ready) v.next(); });
+  v.next();
   return v;
 }
 
-/** How much of the film is here, and whether the rest will arrive before it is needed (judged by how fast it has been arriving
-    so far), so it can play right through without stopping. part: 0..1, for the button's ring. */
-function filmAhead(v) {
-  if (!v.duration || !v.buffered.length) return { through: false, part: 0 };
-  const have = v.buffered.end(v.buffered.length - 1), left = v.duration - have;
-  const rate = have / Math.max(0.2, (performance.now() - v.began) / 1000); // seconds of film arriving per second
-  const through = left < 0.5 || (have - v.currentTime > 1.5 && left / rate < (v.duration - v.currentTime) * 0.8);
-  return { through, part: Math.min(0.97, have / v.duration) };
+/** A whole file, read as it arrives so the start button can show how far along it is. */
+async function download(url, onProgress = () => {}) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  const total = +r.headers.get('content-length') || 0;
+  if (!r.body?.getReader || !total) { const b = await r.blob(); onProgress(1); return b; }
+  const reader = r.body.getReader(), chunks = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    onProgress(got / total);
+  }
+  return new Blob(chunks, { type: 'video/mp4' });
 }
 
 /** Plays the film with its sound if the browser allows it, and silently if it only allows that. Only a refusal counts as failing:
-    an interruption (a pause or a reload asked for meanwhile) is not one. */
+    an interruption (a pause or a new file asked for meanwhile) is not one, nor a file this device can't decode, which is swapped
+    for the other one (prepareFilm). */
 function playFilm(v, sound) {
   v.muted = !sound;
+  v.askedAt ||= performance.now(); // when this way of playing it was first asked to start (filmReady gives it a few seconds)
   return v.play().then(() => true, (e) => {
-    if (e?.name === 'AbortError') return false;
+    if (e?.name === 'AbortError' || v.error) return false;
     if (sound) return playFilm(v, false);
-    v.failed = true;
+    v.next(); // refused even silently: the next way of playing it (prepareFilm), and when there is none left, it has failed
     return false;
   });
 }
 
-/** After the tap: the start button stays, saying how far along the film is ("Warming up · 64%"), until the film can play right
-    through, and only then does it start. So a slow connection waits at the button instead of freezing in the middle of the film,
-    and the button never gives way to a black screen. Resolves true once the film is really playing; false if it can't play at all,
-    or nothing at all has arrived for 12 seconds, and the page then comes up without it. After 20 seconds it starts anyway. */
+/** After the tap: the start button stays, saying how far along the film is ("Warming up · 64%"), until all of it is here, and then
+    it plays. So the button never gives way to a black screen, and the film never stops half way. A way of playing it that doesn't
+    start (from memory within 3 seconds, streamed within 12), or a download that stalls for 15, gives way to the next (prepareFilm).
+    Resolves true once the picture really moves; false once every way has failed, or after a minute, and the page then comes up
+    without it. */
 function filmReady(v, gate) {
   return new Promise((resolve) => {
     const note = $('[data-gate-note]', gate);
     const since = performance.now();
-    let done = false, moved = since, had = -1, asked = false;
+    let done = false, asked = false;
     const finish = (ok) => { if (done) return; done = true; clearInterval(timer); gate.classList.remove('is-waiting'); resolve(ok); };
     const check = () => {
-      if (v.failed) return finish(false);
-      const { through, part } = filmAhead(v);
-      const have = v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0;
-      if (have > had + 0.01 || v.currentTime > 0.05) { had = have; moved = performance.now(); }
-      if (!v.paused && v.currentTime > 0.02 && v.readyState >= 3) return finish(true);
-      // twenty seconds at the button is long enough: it starts with what it has, and catches up as it goes
-      const enough = through || (performance.now() - since > 20000 && have - v.currentTime > 1);
-      if (enough && v.readyState >= 3) {
-        if (v.paused && !asked) { asked = true; playFilm(v, true).then((ok) => { asked = false; if (!ok && v.failed) finish(false); }); }
+      if (v.failed || performance.now() - since > 60000) return finish(false);
+      if (!v.paused && v.currentTime > 0.02 && v.readyState >= 2) return finish(true);
+      if (v.ready) {
+        if (v.paused && !asked) { asked = true; playFilm(v, true).then(() => { asked = false; }); }
+        if (v.askedAt && performance.now() - v.askedAt > (v.whole ? 3000 : 12000)) v.next();
         return;
       }
       gate.classList.add('is-waiting');
-      gate.style.setProperty('--load', part.toFixed(3));
-      if (note) note.textContent = `Warming up · ${Math.round(part * 100)}%`;
-      if (performance.now() - moved > 12000) finish(false);
+      gate.style.setProperty('--load', v.got.toFixed(3));
+      if (note) note.textContent = `Warming up · ${Math.round(v.got * 100)}%`;
+      if (performance.now() - v.moved > 15000) v.next();
     };
     const timer = setInterval(check, 120);
     check();
@@ -349,11 +370,11 @@ function waitForChoice(gate, film) {
     let done = false;
     const pick = (v) => () => { if (done) return; done = true; removeEventListener('keydown', onKey); resolve(v); };
     const onKey = (e) => { if (e.key === 'Escape') pick('skip')(); };
-    // sound and picture have to be started by the tap itself. A film that isn't ready to play through yet is started and stopped
-    // again inside the tap, which is what lets it start later, with its sound, without another tap (filmReady)
+    // sound and picture have to be started by the tap itself. A film still on its way is started and stopped again inside the
+    // tap, which is what lets it start later, with its sound, without another tap (filmReady)
     const startFilm = () => {
       if (!film) return;
-      if (filmAhead(film).through && film.readyState >= 3) { playFilm(film, true); return; }
+      if (film.ready) { playFilm(film, true); return; }
       film.muted = false;
       film.play().catch(() => {});
       film.pause();
@@ -400,7 +421,7 @@ async function runIntro() {
 
   const choice = await waitForChoice(gate, film);
   // resume audio inside the tap itself (iOS and Safari require it)
-  if (choice === 'sound' && audio) audio.ctx.resume();
+  if (choice === 'sound' && audio) audio.ctx.resume().catch(() => {}); // (refused if the page is left before it has started)
 
   if (choice === 'skip') {
     loader.stop();

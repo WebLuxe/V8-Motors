@@ -18,7 +18,8 @@
 // Keep the phone film at 720 x 1560 or smaller and at level 4.0: many Android phones can't decode a picture taller than 1920 in
 // hardware, or a level above what they list, and then the film stutters or never starts. 720 x 1560 is the same shape as the
 // FILMS.tall numbers in src/pages/home.js, so the logo still lands in the right place. Around 2 MB plays through on mobile data.
-// The wide film (W=960 H=540): the same, with scale=1600:900.
+// The wide film (W=960 H=540): the same, with scale=1600:900. node scripts/check-media.mjs checks these limits, and a publish
+// stops if a film is over them.
 // Copy both to public/media/intro/. If the logo's place changes, this script prints the new FILM.mark for src/pages/home.js.
 // Anything that changes the intro (the car, the bay, the timeline in home.js) needs the film rendered again.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -26,8 +27,9 @@ import { pathToFileURL } from 'node:url';
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT + '/index.mjs').href);
 
 const OUT = process.env.OUT, PORT = process.env.PORT || 4178, FPS = 120, SCALE = +(process.env.SCALE || 4);
-// the shape of the film: upright for phones (540 x 900, the default) or wide for computers and tablets (W=960 H=540)
-const W = +(process.env.W || 540), H = +(process.env.H || 900);
+// the shape of the film: upright for phones (420 x 910, the default: FILMS.tall in src/pages/home.js) or wide for computers and
+// tablets (W=960 H=540)
+const W = +(process.env.W || 420), H = +(process.env.H || 910);
 const from = +(process.argv[2] || 0), to = +(process.argv[3] || 12.9);
 mkdirSync(`${OUT}/frames`, { recursive: true });
 
