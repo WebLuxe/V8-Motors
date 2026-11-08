@@ -1,0 +1,61 @@
+# V8 Motors
+
+> Used car dealer at 59B Royal Road, Coromandel, Mauritius. Buy, sell or exchange a car; leasing through Rogers Capital. Prices are in Mauritian rupees.
+
+- Phone: 5259 0327, 5750 7912, 5500 9527, 5532 9727
+- WhatsApp: https://wa.me/23052590327
+- Email: veightmotorsv8@gmail.com
+- Opening hours: Monday to Friday 9:00 to 17:00, Saturday 9:00 to 16:00, closed Sunday
+
+## Pages
+
+- [Catalogue](https://webluxe.github.io/V8-Motors/inventory.html): every car in stock, filterable by body, price, year, fuel and gearbox
+- [Sell](https://webluxe.github.io/V8-Motors/sell.html): rough guide price and an offer for your car, or put it towards one of ours
+- [Leasing](https://webluxe.github.io/V8-Motors/finance.html): monthly payment calculator; leasing is arranged through Rogers Capital
+- [Visit us](https://webluxe.github.io/V8-Motors/contact.html): address, opening hours and how to reach us
+- [Privacy policy](https://webluxe.github.io/V8-Motors/privacy.html)
+- [Terms of sale](https://webluxe.github.io/V8-Motors/terms.html)
+
+## Cars in stock
+
+- [2011 Kia Sportage](https://webluxe.github.io/V8-Motors/cars/2011-kia-sportage-285.html): Rs 325,000, 2.0 L petrol, silver hatchback, Manual
+- [2009 Toyota Corolla](https://webluxe.github.io/V8-Motors/cars/2009-toyota-corolla-284.html): Rs 325,000, 1.6 L petrol, grey sedan, Manual
+- [2019 Hyundai i20](https://webluxe.github.io/V8-Motors/cars/2019-hyundai-i20-283.html): Rs 425,000, 1.2 L petrol, silver hatchback, Manual
+- [2015 Mini Cooper S Countryman](https://webluxe.github.io/V8-Motors/cars/2015-mini-cooper-s-countryman-282.html): Rs 850,000, 1.6 L petrol, grey hatchback, Automatic
+- [2019 Honda Fit](https://webluxe.github.io/V8-Motors/cars/2019-honda-fit-281.html): Rs 725,000, 1.3 L petrol, blue hatchback, Automatic
+- [2018 Kia Sportage](https://webluxe.github.io/V8-Motors/cars/2018-kia-sportage-280.html): Rs 775,000, 1.6 L petrol, black hatchback, Automatic
+- [2015 Nissan Micra](https://webluxe.github.io/V8-Motors/cars/2015-nissan-micra-278.html): Rs 285,000, 1.2 L petrol, hatchback, Manual
+- [2011 Range Rover Evoque](https://webluxe.github.io/V8-Motors/cars/2011-range-rover-evoque-276.html): Rs 600,000, 2.0 L petrol, red hatchback, Automatic
+- [2025 Hyundai Creta](https://webluxe.github.io/V8-Motors/cars/2025-hyundai-creta-275.html): Rs 1,400,000, 1.6 L petrol, grey SUV, Automatic
+- [2021 Renault Triber](https://webluxe.github.io/V8-Motors/cars/2021-renault-triber-274.html): Rs 400,000, 1.0 L petrol, white MPV, Manual
+- [2015 Mazda 3](https://webluxe.github.io/V8-Motors/cars/2015-mazda-3-273.html): Rs 550,000, 1.6 L petrol, brown hatchback, Automatic
+- [2018 Suzuki Ciaz](https://webluxe.github.io/V8-Motors/cars/2018-suzuki-ciaz-271.html): Rs 425,000, 1.4 L petrol, silver sedan, Automatic
+- [2021 Hyundai Tucson](https://webluxe.github.io/V8-Motors/cars/2021-hyundai-tucson-269.html): Rs 1,050,000, 1.6 L petrol, black hatchback, Automatic
+- [2005 Toyota Passo](https://webluxe.github.io/V8-Motors/cars/2005-toyota-passo-268.html): Rs 225,000, 1.0 L petrol, white hatchback, Automatic
+- [2012 BMW 328i](https://webluxe.github.io/V8-Motors/cars/2012-bmw-328i-267.html): Rs 450,000, 2.0 L petrol, red sedan, Automatic
+- [2023 Suzuki XL6](https://webluxe.github.io/V8-Motors/cars/2023-suzuki-xl6-266.html): Rs 950,000, 1.4 L petrol, red MPV, Automatic, 46,000 km
+- [2012 Land Rover Range Rover](https://webluxe.github.io/V8-Motors/cars/2012-land-rover-range-rover-264.html): Rs 850,000, 3.0 L diesel, black SUV, Automatic, 150,000 km
+- [2022 Suzuki Brezza](https://webluxe.github.io/V8-Motors/cars/2022-suzuki-brezza-263.html): Rs 850,000, 1.4 L petrol, white SUV, Automatic
+- [2022 Nissan Almera](https://webluxe.github.io/V8-Motors/cars/2022-nissan-almera-262.html): Rs 675,000, 1.5 L petrol, white sedan, Automatic
+- [2022 Suzuki Ciaz](https://webluxe.github.io/V8-Motors/cars/2022-suzuki-ciaz-261.html): Rs 675,000, 1.4 L petrol, white sedan, Automatic, 107,000 km
+- [2019 Honda CR-V](https://webluxe.github.io/V8-Motors/cars/2019-honda-cr-v-255.html): Rs 1,350,000, 1.5 L petrol, grey hatchback, Automatic
+- [2013 Ford Kuga](https://webluxe.github.io/V8-Motors/cars/2013-ford-kuga-247.html): Rs 450,000, 1.6 L petrol, white SUV, Automatic
+- [2016 Nissan Qashqai](https://webluxe.github.io/V8-Motors/cars/2016-nissan-qashqai-222.html): Rs 575,000, 1.2 L petrol, white SUV, Automatic
+- [2020 Nissan NP300](https://webluxe.github.io/V8-Motors/cars/2020-nissan-np300-221.html): Rs 825,000, 2.4 L diesel, white pickup, Manual
+- [2019 Nissan Navara](https://webluxe.github.io/V8-Motors/cars/2019-nissan-navara-206.html): Rs 1,075,000, 2.5 L diesel, silver pickup, Automatic, 139,000 km
+- [2015 Renault Captur](https://webluxe.github.io/V8-Motors/cars/2015-renault-captur-198.html): Rs 375,000, 1.2 L petrol, silver SUV, Automatic
+- [2015 Renault Clio](https://webluxe.github.io/V8-Motors/cars/2015-renault-clio-192.html): Rs 250,000, 1.2 L petrol, white hatchback, Manual
+- [2011 BMW 520d SE](https://webluxe.github.io/V8-Motors/cars/2011-bmw-520d-se-188.html): Rs 485,000, 3.0 L diesel, dark blue sedan, Manual
+- [2018 Hyundai Elantra](https://webluxe.github.io/V8-Motors/cars/2018-hyundai-elantra-186.html): Rs 685,000, 1.6 L petrol, red sedan, Automatic
+- [2018 Renault Kadjar](https://webluxe.github.io/V8-Motors/cars/2018-renault-kadjar-185.html): Rs 575,000, 1.2 L petrol, red SUV, Automatic, 115,000 km
+- [2017 Nissan NP300](https://webluxe.github.io/V8-Motors/cars/2017-nissan-np300-172.html): Rs 750,000, 2.5 L diesel, white pickup, Manual
+- [2020 Renault Trafic](https://webluxe.github.io/V8-Motors/cars/2020-renault-trafic-164.html): Rs 650,000, 2.0 L diesel, white van, Manual
+- [2012 Ford Ranger](https://webluxe.github.io/V8-Motors/cars/2012-ford-ranger-163.html): Rs 525,000, 2.2 L diesel, white pickup, Manual
+- [2018 Nissan NP300](https://webluxe.github.io/V8-Motors/cars/2018-nissan-np300-106.html): Rs 675,000, 2.5 L diesel, white pickup, Manual
+- [2014 Ford EcoSport](https://webluxe.github.io/V8-Motors/cars/2014-ford-ecosport-105.html): Rs 350,000, 1.6 L petrol, blue hatchback, Automatic
+- [2019 Jeep Renegade](https://webluxe.github.io/V8-Motors/cars/2019-jeep-renegade-57.html): Rs 975,000, 1.4 L petrol, blue hatchback, Automatic
+- [2012 Nissan AD Van](https://webluxe.github.io/V8-Motors/cars/2012-nissan-ad-van-45.html): Rs 325,000, 1.5 L petrol, white van, Automatic
+- [2022 Renault Triber](https://webluxe.github.io/V8-Motors/cars/2022-renault-triber-28.html): Rs 425,000, 1.0 L petrol, grey MPV, Manual
+- [2008 Volkswagen Golf](https://webluxe.github.io/V8-Motors/cars/2008-volkswagen-golf-26.html): Rs 375,000, 1.4 L petrol, silver hatchback, Manual
+- [2016 Volkswagen Polo](https://webluxe.github.io/V8-Motors/cars/2016-volkswagen-polo-24.html): Rs 275,000, 1.4 L petrol, grey sedan, Manual
+- [2017 Hyundai H100](https://webluxe.github.io/V8-Motors/cars/2017-hyundai-h100-13.html): Rs 650,000, 2.6 L diesel, white van, Manual
